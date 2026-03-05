@@ -51,6 +51,7 @@ export function DbSourcedChoicePicker({ choice, resolved, onChange, readOnly, co
     }
 
     onChange({
+      id: resolved?.id ?? crypto.randomUUID(),
       sourceType: context.sourceType,
       sourceId: context.sourceId,
       level: context.level ?? 0,
