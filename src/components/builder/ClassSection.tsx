@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useCharacterStore } from '@/store/characterStore';
 import { useClasses } from '@/hooks/useGameDatabase';
-import { DbSourcedChoicePicker } from '@/components/sheet/DbSourcedChoicePicker';
+import { ChoicePicker } from '@/components/sheet/ChoicePicker';
 import type { Character, CharacterClassEntry } from '@/types/character';
 import type { GameClass } from '@/types/game';
 
@@ -219,7 +219,7 @@ function LevelBlock({ label, levelNum, cls, entry, character, features, choices,
 
           {/* Choices */}
           {choices.map(choice => (
-            <DbSourcedChoicePicker
+            <ChoicePicker
               key={choice.id}
               choice={choice}
               resolved={entry.choices.find(r => r.choiceId === choice.id && r.level === levelNum)}

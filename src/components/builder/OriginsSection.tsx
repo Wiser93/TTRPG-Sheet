@@ -1,6 +1,6 @@
 import { useCharacterStore } from '@/store/characterStore';
 import { useAllSpecies, useBackgrounds } from '@/hooks/useGameDatabase';
-import { DbSourcedChoicePicker } from '@/components/sheet/DbSourcedChoicePicker';
+import { ChoicePicker } from '@/components/sheet/ChoicePicker';
 import type { Character } from '@/types/character';
 
 interface Props { character: Character }
@@ -44,7 +44,7 @@ export function OriginsSection({ character }: Props) {
               {activeSpecies.name} Choices
             </p>
             {activeSpecies.creationChoices!.map(choice => (
-              <DbSourcedChoicePicker
+              <ChoicePicker
                 key={choice.id}
                 choice={choice}
                 resolved={character.speciesChoices.find(r => r.choiceId === choice.id)}
@@ -84,7 +84,7 @@ export function OriginsSection({ character }: Props) {
               {activeBackground.name} Choices
             </p>
             {activeBackground.creationChoices!.map(choice => (
-              <DbSourcedChoicePicker
+              <ChoicePicker
                 key={choice.id}
                 choice={choice}
                 resolved={character.backgroundChoices.find(r => r.choiceId === choice.id)}
