@@ -139,7 +139,7 @@ export function DatabaseView() {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {(filtered as Array<{ id: string; name: string; description?: string; [k: string]: unknown }>).map((entry) => (
+            {(filtered as unknown as Array<{ id: string; name: string; description?: string; [k: string]: unknown }>).map((entry) => (
               <EntryCard
                 key={entry.id}
                 entry={entry}
