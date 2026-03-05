@@ -139,7 +139,13 @@ export const useCharacterStore = create<CharacterStore>()(
     _saveTimer: null,
 
     // ── Lifecycle ────────────────────────────────────────────
-    loadCharacter: (character) => set(s => { s.character = character as never; s.isLoading = false; }),
+    loadCharacter: (character) => set(s => {
+      // Backfill fields added in later schema versions so existing saved
+      // characters don't crash when mutations access them.
+      if (!character.hpRolls) (character as Character).hpRolls = [];
+      s.character = character as never;
+      s.isLoading = false;
+    }),
     unloadCharacter: () => {
       const { _saveTimer } = get();
       if (_saveTimer) clearTimeout(_saveTimer);
@@ -272,6 +278,7 @@ export const useCharacterStore = create<CharacterStore>()(
       }
       // Auto-record level 1 as max die if no roll exists yet
       const newLevel = existing ? existing.level : 1;
+      if (!c.hpRolls) c.hpRolls = [];
       const hasRoll = c.hpRolls.some(r => r.classId === classId && r.level === newLevel);
       if (!hasRoll) {
         c.hpRolls.push({ classId, level: newLevel, roll: newLevel === 1 ? hitDie : Math.ceil((hitDie + 1) / 2) });
@@ -288,6 +295,7 @@ export const useCharacterStore = create<CharacterStore>()(
         existing.level -= 1;
       }
       // Remove the hp roll for that level
+      if (!c.hpRolls) c.hpRolls = [];
       c.hpRolls = c.hpRolls.filter(r => !(r.classId === classId && r.level === removedLevel));
       // Remove choices made at that level
       if (existing) {
@@ -296,6 +304,7 @@ export const useCharacterStore = create<CharacterStore>()(
     }),
 
     setHpRoll: (classId, level, roll) => mutate(set, get, c => {
+      if (!c.hpRolls) c.hpRolls = [];
       const existing = c.hpRolls.find(r => r.classId === classId && r.level === level);
       if (existing) {
         existing.roll = roll;
