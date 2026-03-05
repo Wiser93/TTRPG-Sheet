@@ -34,6 +34,7 @@ export function buildDefaultCharacter(name: string): Character {
     speciesChoices: [],
     backgroundChoices: [],
     classes: [],
+    hpRolls: [],
 
     stats: {
       base: { ...defaultStats },

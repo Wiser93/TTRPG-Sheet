@@ -15,7 +15,7 @@ const TABS: { key: SheetTab; label: string; icon: string }[] = [
 ];
 
 export function CharacterSheetView() {
-  const { activeCharacterId, sheetTab, setSheetTab, closeCharacter } = useUIStore();
+  const { activeCharacterId, sheetTab, setSheetTab, closeCharacter, openBuilder } = useUIStore();
   const { character, derived, isLoaded } = useCharacter(activeCharacterId);
 
   if (!isLoaded || !character || !derived) {
@@ -50,6 +50,17 @@ export function CharacterSheetView() {
               : 'Unlevelled'} · HP {character.health.current}/{derived.maxHP}
           </p>
         </div>
+        <button
+          onClick={() => openBuilder(activeCharacterId!)}
+          title="Character Builder"
+          style={{
+            fontSize: 20, lineHeight: 1,
+            padding: '4px 8px',
+            borderRadius: 6,
+            background: 'var(--bg-2)',
+            border: '1px solid var(--border)',
+          }}
+        >✏️</button>
       </header>
 
       {/* Tab content */}

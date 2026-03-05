@@ -24,6 +24,7 @@ interface UIStore {
 
   setView: (view: AppView) => void;
   openCharacter: (id: string) => void;
+  openBuilder: (id: string) => void;
   closeCharacter: () => void;
   setSheetTab: (tab: SheetTab) => void;
   setDatabaseSection: (section: UIStore['databaseSection']) => void;
@@ -41,6 +42,7 @@ export const useUIStore = create<UIStore>()(set => ({
 
   setView: (view) => set({ view }),
   openCharacter: (id) => set({ activeCharacterId: id, view: 'sheet', sheetTab: 'overview' }),
+  openBuilder: (id) => set({ activeCharacterId: id, view: 'builder' }),
   closeCharacter: () => set({ activeCharacterId: null, view: 'home' }),
   setSheetTab: (tab) => set({ sheetTab: tab }),
   setDatabaseSection: (section) => set({ databaseSection: section }),

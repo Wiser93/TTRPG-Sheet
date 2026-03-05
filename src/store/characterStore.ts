@@ -62,6 +62,22 @@ interface CharacterStore {
   // ── Inspiration ────────────────────────────────────────────
   setInspiration: (value: boolean) => void;
 
+  // ── Character Builder ─────────────────────────────────────
+  setSpecies: (speciesId: string | undefined) => void;
+  setBackground: (backgroundId: string | undefined) => void;
+  /** Add a class at level 1 (or increase level if already present) */
+  addClassLevel: (classId: string, hitDie: number) => void;
+  /** Remove the highest level from a class (removes its hpRoll too) */
+  removeClassLevel: (classId: string) => void;
+  /** Store a per-level HP roll from the builder */
+  setHpRoll: (classId: string, level: number, roll: number) => void;
+  /** Save a resolved choice (creation or level-up) */
+  resolveBuilderChoice: (choice: import('@/types/character').ResolvedChoice, sourceType: 'class' | 'species' | 'background') => void;
+  /** Set all six base stats at once */
+  setBaseStats: (stats: import('@/types/character').StatBlock) => void;
+  /** Set a single base stat */
+  setBaseStat: (stat: import('@/types/game').StatKey, value: number) => void;
+
   // ── Elemental Embodiment ──────────────────────────────────
   setElementalEmbodiment: (element: Character['elementalEmbodiment']) => void;
 
@@ -237,6 +253,83 @@ export const useCharacterStore = create<CharacterStore>()(
 
     // ── Inspiration ──────────────────────────────────────────
     setInspiration: (value) => mutate(set, get, c => { c.combat.inspiration = value; }),
+
+    // ── Character Builder ─────────────────────────────────────
+    setSpecies: (speciesId) => mutate(set, get, c => {
+      c.speciesId = speciesId;
+    }),
+
+    setBackground: (backgroundId) => mutate(set, get, c => {
+      c.backgroundId = backgroundId;
+    }),
+
+    addClassLevel: (classId, hitDie) => mutate(set, get, c => {
+      const existing = c.classes.find(e => e.classId === classId);
+      if (existing) {
+        existing.level += 1;
+      } else {
+        c.classes.push({ classId, level: 1, choices: [] });
+      }
+      // Auto-record level 1 as max die if no roll exists yet
+      const newLevel = existing ? existing.level : 1;
+      const hasRoll = c.hpRolls.some(r => r.classId === classId && r.level === newLevel);
+      if (!hasRoll) {
+        c.hpRolls.push({ classId, level: newLevel, roll: newLevel === 1 ? hitDie : Math.ceil((hitDie + 1) / 2) });
+      }
+    }),
+
+    removeClassLevel: (classId) => mutate(set, get, c => {
+      const existing = c.classes.find(e => e.classId === classId);
+      if (!existing) return;
+      const removedLevel = existing.level;
+      if (existing.level <= 1) {
+        c.classes = c.classes.filter(e => e.classId !== classId);
+      } else {
+        existing.level -= 1;
+      }
+      // Remove the hp roll for that level
+      c.hpRolls = c.hpRolls.filter(r => !(r.classId === classId && r.level === removedLevel));
+      // Remove choices made at that level
+      if (existing) {
+        existing.choices = existing.choices.filter(ch => ch.level !== removedLevel);
+      }
+    }),
+
+    setHpRoll: (classId, level, roll) => mutate(set, get, c => {
+      const existing = c.hpRolls.find(r => r.classId === classId && r.level === level);
+      if (existing) {
+        existing.roll = roll;
+      } else {
+        c.hpRolls.push({ classId, level, roll });
+      }
+    }),
+
+    resolveBuilderChoice: (choice, sourceType) => mutate(set, get, c => {
+      if (sourceType === 'class') {
+        const cls = c.classes.find(e => e.classId === choice.sourceId);
+        if (!cls) return;
+        const idx = cls.choices.findIndex(ch => ch.id === choice.id);
+        if (idx >= 0) {
+          cls.choices[idx] = choice;
+        } else {
+          cls.choices.push(choice);
+        }
+      } else if (sourceType === 'species') {
+        const idx = c.speciesChoices.findIndex(ch => ch.id === choice.id);
+        if (idx >= 0) { c.speciesChoices[idx] = choice; } else { c.speciesChoices.push(choice); }
+      } else if (sourceType === 'background') {
+        const idx = c.backgroundChoices.findIndex(ch => ch.id === choice.id);
+        if (idx >= 0) { c.backgroundChoices[idx] = choice; } else { c.backgroundChoices.push(choice); }
+      }
+    }),
+
+    setBaseStats: (stats) => mutate(set, get, c => {
+      c.stats.base = stats;
+    }),
+
+    setBaseStat: (stat, value) => mutate(set, get, c => {
+      c.stats.base[stat] = value;
+    }),
 
     // ── Elemental Embodiment ─────────────────────────────────
     setElementalEmbodiment: (element) => mutate(set, get, c => {

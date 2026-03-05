@@ -209,13 +209,23 @@ export function deriveStats(character: Character, gameData: GameData): DerivedSt
   // ── Max HP ───────────────────────────────────────────────
   let maxHP = character.health.maxOverride ?? 0;
   if (!character.health.maxOverride) {
+    const conMod = statMods.constitution;
     for (const classEntry of character.classes) {
       const cls = gameData.classes.find(c => c.id === classEntry.classId);
       if (!cls) continue;
-      // First level: max die + CON mod; subsequent: average + CON mod
-      const conMod = statMods.constitution;
-      const avg = Math.ceil((cls.hitDie + 1) / 2);
-      maxHP += (cls.hitDie + conMod) + (classEntry.level - 1) * (avg + conMod);
+      for (let lvl = 1; lvl <= classEntry.level; lvl++) {
+        const stored = character.hpRolls?.find(
+          r => r.classId === classEntry.classId && r.level === lvl
+        );
+        if (stored) {
+          // Use the player's actual roll (or recorded max) + CON mod
+          maxHP += stored.roll + conMod;
+        } else {
+          // Fallback: level 1 = max die, subsequent = average
+          const avg = Math.ceil((cls.hitDie + 1) / 2);
+          maxHP += (lvl === 1 ? cls.hitDie : avg) + conMod;
+        }
+      }
     }
   }
 

@@ -158,6 +158,15 @@ export interface KnownSpell {
 // CHARACTER
 // ============================================================
 
+export interface HpRollEntry {
+  /** Which class this roll belongs to */
+  classId: string;
+  /** 1-indexed level within that class */
+  level: number;
+  /** The raw die result (before CON modifier) */
+  roll: number;
+}
+
 export interface CharacterMeta {
   id: string;
   name: string;
@@ -230,6 +239,14 @@ export interface Character {
 
   // Class(es)
   classes: CharacterClassEntry[];
+
+  /**
+   * Per-level HP rolls, stored so the builder can reference and edit them.
+   * When present for a given level, deriveStats sums these instead of using
+   * the class average. CON modifier is added per level at derivation time.
+   * Level 1 of the first class always uses max die value (stored as the die max).
+   */
+  hpRolls: HpRollEntry[];
 
   // Core stats
   stats: CharacterStats;
