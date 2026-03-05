@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/schema';
-import { createCharacter, deleteCharacter } from '@/db/characterDatabase';
+import { createCharacter } from '@/db/characterDatabase';
 import { useUIStore } from '@/store/uiStore';
 import { useState } from 'react';
 
@@ -18,7 +18,7 @@ export function HomeView() {
     if (!newName.trim()) return;
     setCreating(true);
     try {
-      const c = await createCharacter({ meta: { name: newName.trim() } });
+      const c = await createCharacter(newName.trim());
       openCharacter(c.id);
     } finally {
       setCreating(false);

@@ -62,20 +62,12 @@ export function SpellsTab({ character, derived }: Props) {
         </div>
       )}
 
-      {/* Known spells by level */}
-      {[0,1,2,3,4,5,6,7,8,9].map(level => {
-        const spells = character.knownSpells.filter(s => {
-          // We'd need the spell level here — for now just group all under cantrips/spells
-          return true;
-        });
-        return null; // Render inline below
-      })}
+      {/* Known spells by level — grouped rendering handled below */}
 
       {/* Cantrips */}
       <SpellList
         title="Cantrips"
         spells={character.knownSpells}
-        derived={derived}
         onTogglePrepare={toggleSpellPrepared}
       />
 
@@ -88,10 +80,9 @@ export function SpellsTab({ character, derived }: Props) {
   );
 }
 
-function SpellList({ title, spells, derived, onTogglePrepare }: {
+function SpellList({ title, spells, onTogglePrepare }: {
   title: string;
   spells: KnownSpell[];
-  derived: DerivedStats;
   onTogglePrepare: (spellId: string, classId: string) => void;
 }) {
   if (spells.length === 0) return null;

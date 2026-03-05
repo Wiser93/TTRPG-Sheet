@@ -37,7 +37,7 @@ function sign(n: number) { return n >= 0 ? `+${n}` : `${n}`; }
 interface Props { character: Character; derived: DerivedStats; }
 
 export function OverviewTab({ character, derived }: Props) {
-  const { setCurrentHP, setTempHP } = useCharacterStore();
+  const { setCurrentHP } = useCharacterStore();
 
   return (
     <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>

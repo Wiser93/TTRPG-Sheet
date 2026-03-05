@@ -1,5 +1,4 @@
 import { db, makeDBMeta, markDirty, live, type DBItem, type DBSpell, type DBClass, type DBFeat, type DBSpecies, type DBBackground, type DBSubclass } from './schema';
-import type { Item, Spell, GameClass, Feat, Species, Background } from '@/types/game';
 
 // ============================================================
 // GENERIC HELPERS

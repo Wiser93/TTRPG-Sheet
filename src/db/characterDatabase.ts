@@ -21,13 +21,9 @@ export async function getCharacter(id: string): Promise<DBCharacter | undefined>
 // CREATE
 // ============================================================
 
-export async function createCharacter(
-  partial: Partial<Character> & { meta: { name: string } }
-): Promise<DBCharacter> {
-  const base = buildDefaultCharacter(partial.meta.name);
-  const merged: Character = { ...base, ...partial, meta: { ...base.meta, ...partial.meta } };
-  const record: DBCharacter = { ...merged, ...makeDBMeta(), id: merged.meta.id };
-
+export async function createCharacter(name: string): Promise<DBCharacter> {
+  const base = buildDefaultCharacter(name);
+  const record: DBCharacter = { ...base, ...makeDBMeta(), id: base.meta.id };
   await db.characters.add(record);
   return record;
 }

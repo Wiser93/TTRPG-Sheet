@@ -7,8 +7,6 @@ interface Props { character: Character; derived: DerivedStats; }
 export function InventoryTab({ character }: Props) {
   const { removeInventoryEntry, updateInventoryEntry } = useCharacterStore();
 
-  const totalWeight = character.inventory.reduce((sum, entry) => sum + entry.quantity, 0);
-
   return (
     <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
 

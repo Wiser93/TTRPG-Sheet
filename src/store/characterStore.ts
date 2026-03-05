@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import type { Character, CharacterHealth, ActiveCondition, InventoryEntry, EquippedSlots, SpellSlotState, ResourceState, KnownSpell } from '@/types/character';
+import type { Character, ActiveCondition, InventoryEntry, EquippedSlots, SpellSlotState, ResourceState, KnownSpell } from '@/types/character';
 import { updateCharacter } from '@/db/characterDatabase';
 
 // ============================================================

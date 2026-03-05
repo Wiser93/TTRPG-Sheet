@@ -3,7 +3,7 @@ import type { Character, DerivedStats } from '@/types/character';
 
 interface Props { character: Character; derived: DerivedStats; }
 
-export function CombatTab({ character, derived }: Props) {
+export function CombatTab({ character }: Props) {
   const { addDeathSave, resetDeathSaves, shortRest, longRest, addCondition, removeCondition } = useCharacterStore();
 
   return (
