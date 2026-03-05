@@ -107,10 +107,9 @@ export function useDbSourceOptions(source: import('@/types/game').ChoiceDbSource
         .map(i => ({ id: i.id, name: i.name, description: i.description }));
     }
     if (entity === 'feats') {
+      // DBFeat (Feat & DBRecord) has no tags field — tag filter is ignored for feats
       const all = await live(db.feats).sortBy('name');
-      return all
-        .filter(i => !tag || (i.tags ?? []).includes(tag))
-        .map(i => ({ id: i.id, name: i.name, description: i.description }));
+      return all.map(i => ({ id: i.id, name: i.name, description: i.description }));
     }
     return [];
   }, [entity, tag, category]);

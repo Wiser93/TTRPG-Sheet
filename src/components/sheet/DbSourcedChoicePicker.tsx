@@ -53,7 +53,7 @@ export function DbSourcedChoicePicker({ choice, resolved, onChange, readOnly, co
     onChange({
       sourceType: context.sourceType,
       sourceId: context.sourceId,
-      level: context.level,
+      level: context.level ?? 0,
       choiceId: choice.id,
       selectedValues: next,
     });
