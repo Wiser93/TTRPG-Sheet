@@ -11,7 +11,7 @@ import type { DerivedStats } from '@/types/character';
  * and returns the derived stats.
  */
 export function useCharacter(characterId: string | null) {
-  const { loadCharacter, unloadCharacter, character } = useCharacterStore();
+  const { loadCharacter, unloadCharacter, character, syncResourceMaxes } = useCharacterStore();
   const [derived, setDerived] = useState<DerivedStats | null>(null);
 
   // Live-query classes, species, etc. for derived stat calculation
@@ -46,11 +46,16 @@ export function useCharacter(characterId: string | null) {
   useEffect(() => {
     if (!character || !gameData) return;
     try {
-      setDerived(deriveStats(character, gameData));
+      const d = deriveStats(character, gameData);
+      setDerived(d);
+      // Sync any formula-based resource maxes back into the store
+      if (Object.keys(d.resourceMaxes).length > 0) {
+        syncResourceMaxes(d.resourceMaxes);
+      }
     } catch (e) {
       console.error('Failed to derive stats:', e);
     }
-  }, [character, gameData]);
+  }, [character, gameData, syncResourceMaxes]);
 
   return { character, derived, isLoaded: !!character };
 }

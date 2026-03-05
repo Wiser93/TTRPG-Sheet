@@ -117,6 +117,40 @@ export function deriveStats(character: Character, gameData: GameData): DerivedSt
 
   // ── AC ───────────────────────────────────────────────────
   // Base: 10 + DEX unless armor equipped (simplified — UI layer handles equipped armor)
+  // ── DB-sourced choice proficiencies ─────────────────────
+  // Merge any weapon/armor/tool proficiencies granted by resolved choices
+  // (including DB-sourced picks like "1 martial weapon of your choice")
+  const extraWeaponProfs: string[] = [];
+  const extraArmorProfs: string[] = [];
+  const extraToolProfs: string[] = [];
+
+  function resolveChoiceProfs(choices: import('@/types/game').Choice[], resolved: import('@/types/character').ResolvedChoice[]) {
+    for (const choice of choices) {
+      if (!choice.dbSource?.grantsType) continue;
+      const match = resolved.find(r => r.choiceId === choice.id);
+      if (!match || match.selectedValues.length === 0) continue;
+      // For DB-sourced choices, selectedValues are item IDs — we store the name
+      // via the item lookup below. For now, store ids and let the sheet resolve labels.
+      const { grantsType } = choice.dbSource;
+      for (const val of match.selectedValues) {
+        if (grantsType === 'weapon_proficiency') extraWeaponProfs.push(val);
+        else if (grantsType === 'armor_proficiency') extraArmorProfs.push(val);
+        else if (grantsType === 'tool_proficiency') extraToolProfs.push(val);
+      }
+    }
+  }
+
+  // Scan class creation choices and per-level choices
+  for (const charClass of character.classes) {
+    const cls = gameData.classes.find(c => c.id === charClass.classId);
+    if (!cls) continue;
+    resolveChoiceProfs(cls.creationChoices ?? [], charClass.choices);
+    for (const levelEntry of cls.levelEntries) {
+      if (levelEntry.level > charClass.level) break;
+      resolveChoiceProfs(levelEntry.choices ?? [], charClass.choices);
+    }
+  }
+
   let ac = character.combat.baseAC ?? (10 + statMods.dexterity);
   for (const mod of allModifiers) {
     if (mod.target.kind !== 'ac') continue;
@@ -185,6 +219,14 @@ export function deriveStats(character: Character, gameData: GameData): DerivedSt
     }
   }
 
+  // ── Formula-based resource maxes ────────────────────────
+  const classLevels = Object.fromEntries(
+    character.classes.map(c => [c.classId, c.level])
+  );
+  const resourceMaxes = deriveResourceMaxes(character.resources, {
+    statMods, profBonus, totalLevel, classLevels,
+  });
+
   return {
     stats: finalStats,
     statMods,
@@ -201,6 +243,10 @@ export function deriveStats(character: Character, gameData: GameData): DerivedSt
     allModifiers,
     spellAttackBonus,
     spellSaveDC,
+    resourceMaxes,
+    extraWeaponProfs,
+    extraArmorProfs,
+    extraToolProfs,
   };
 }
 
@@ -238,4 +284,55 @@ function resolveScaledValue(
         return 0;
       }
   }
+}
+
+// ============================================================
+// RESOURCE FORMULA RESOLVER
+// ============================================================
+
+import type { ResourceFormulaTerm, ResourceState } from '@/types/character';
+
+/**
+ * Resolve a ResourceFormulaTerm[] into a concrete max value.
+ * Called inside deriveStats and exported for use in the store.
+ */
+export function resolveResourceMax(
+  formula: ResourceFormulaTerm[],
+  ctx: {
+    statMods: Record<import('@/types/game').StatKey, number>;
+    profBonus: number;
+    totalLevel: number;
+    classLevels: Record<string, number>;
+  },
+  minMax = 1
+): number {
+  const sum = formula.reduce((acc, term) => {
+    switch (term.type) {
+      case 'flat':           return acc + term.value;
+      case 'stat_mod':       return acc + (ctx.statMods[term.stat] ?? 0);
+      case 'proficiency_bonus': return acc + ctx.profBonus;
+      case 'half_class_level':  return acc + Math.floor((ctx.classLevels[term.classId] ?? 0) / 2);
+      case 'class_level':       return acc + (ctx.classLevels[term.classId] ?? 0);
+      case 'total_level':       return acc + ctx.totalLevel;
+      default:               return acc;
+    }
+  }, 0);
+  return Math.max(minMax, sum);
+}
+
+/**
+ * Compute resolved maxes for all resources that have a maxFormula.
+ * Returns a Record<resourceId, resolvedMax>.
+ */
+export function deriveResourceMaxes(
+  resources: ResourceState[],
+  ctx: Parameters<typeof resolveResourceMax>[1]
+): Record<string, number> {
+  const result: Record<string, number> = {};
+  for (const r of resources) {
+    if (r.maxFormula?.length) {
+      result[r.id] = resolveResourceMax(r.maxFormula, ctx, r.minMax ?? 1);
+    }
+  }
+  return result;
 }

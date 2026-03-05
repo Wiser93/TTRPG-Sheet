@@ -61,6 +61,28 @@ export interface ChoiceOption {
   grants?: Choice[];
 }
 
+/**
+ * When set on a Choice, options are populated live from the game database
+ * rather than being listed statically in `options[]`.
+ *
+ * Examples:
+ *   { entity: 'items', filterTag: 'martial' }      → all items tagged 'martial'
+ *   { entity: 'items', filterCategory: 'weapon' }  → all weapon-category items
+ *   { entity: 'feats' }                             → all feats
+ *
+ * The resolved option id is the DB record's id, and label is its name.
+ * The selected ids are stored in ResolvedChoice.selectedValues as usual.
+ */
+export interface ChoiceDbSource {
+  entity: 'items' | 'spells' | 'feats';
+  /** Only include records whose tags array contains this value */
+  filterTag?: string;
+  /** Only include items whose category matches (items only) */
+  filterCategory?: string;
+  /** How the selected value should be interpreted for character proficiencies */
+  grantsType?: 'weapon_proficiency' | 'armor_proficiency' | 'tool_proficiency' | 'language';
+}
+
 export interface Choice {
   id: string;
   label: string;
@@ -71,6 +93,11 @@ export interface Choice {
   options?: ChoiceOption[];
   /** If true, the same option cannot be picked twice */
   unique?: boolean;
+  /**
+   * When set, options are sourced live from the game database.
+   * Overrides static `options` if both are present.
+   */
+  dbSource?: ChoiceDbSource;
 }
 
 // ============================================================
@@ -206,6 +233,11 @@ export interface GameClass {
   weaponProficiencies: string[];
   toolProficiencies: string[];
   spellcasting?: SpellcastingConfig;
+  /**
+   * Choices made at character creation, before level 1.
+   * Supports DB-sourced choices (e.g. pick 1 martial weapon from Items tagged 'martial').
+   */
+  creationChoices?: Choice[];
   levelEntries: ClassLevelEntry[];   // 1–20
   subclasses: Subclass[];
   customFields?: Record<string, unknown>;

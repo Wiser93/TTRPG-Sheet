@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import type { GameClass, StatKey, SkillKey, ClassLevelEntry, Feature, SpellcastingConfig } from '@/types/game';
+import type { GameClass, StatKey, SkillKey, ClassLevelEntry, Feature, SpellcastingConfig, Choice } from '@/types/game';
 import { LabeledInput, LabeledSelect, LabeledTextarea, FormRow, FormSection } from '@/components/ui/FormField';
 import { CheckboxGroup, TagInput } from '@/components/ui/TagInput';
 import { FeatureEditor } from '@/components/ui/FeatureEditor';
+import { ChoiceEditor } from '@/components/ui/ChoiceEditor';
 
 const STATS: StatKey[] = ['strength','dexterity','constitution','intelligence','wisdom','charisma'];
 const STAT_LABELS: Record<StatKey, string> = { strength:'STR', dexterity:'DEX', constitution:'CON', intelligence:'INT', wisdom:'WIS', charisma:'CHA' };
@@ -60,6 +61,11 @@ export function ClassForm({ initial, onSave, onCancel, isSaving }: ClassFormProp
     patch({ levelEntries: updated });
   }
 
+  function updateLevelChoices(level: number, choices: Choice[]) {
+    const updated = (cls.levelEntries ?? []).map(e => e.level === level ? { ...e, choices } : e);
+    patch({ levelEntries: updated });
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!cls.name?.trim()) return;
@@ -77,6 +83,7 @@ export function ClassForm({ initial, onSave, onCancel, isSaving }: ClassFormProp
       weaponProficiencies: cls.weaponProficiencies ?? [],
       toolProficiencies: cls.toolProficiencies ?? [],
       spellcasting: hasSpellcasting ? cls.spellcasting : undefined,
+      creationChoices: cls.creationChoices ?? [],
       levelEntries,
       subclasses: cls.subclasses ?? [],
     });
@@ -176,8 +183,19 @@ export function ClassForm({ initial, onSave, onCancel, isSaving }: ClassFormProp
         )}
       </FormSection>
 
+      <FormSection title="Creation Choices">
+        <p style={{ fontSize: 12, color: 'var(--text-2)' }}>
+          Choices the player makes at character creation (before level 1). Use DB-sourced choices
+          to let the player pick from the live database — e.g. a single martial weapon proficiency.
+        </p>
+        <ChoiceEditor
+          choices={cls.creationChoices ?? []}
+          onChange={(creationChoices) => patch({ creationChoices })}
+        />
+      </FormSection>
+
       <FormSection title="Level Features">
-        <p style={{ fontSize: 12, color: 'var(--text-2)' }}>Click a level to add features granted at that level.</p>
+        <p style={{ fontSize: 12, color: 'var(--text-2)' }}>Click a level to add features and choices granted at that level.</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {levelEntries.map(entry => {
             const hasFeatures = entry.features.length > 0;
@@ -198,9 +216,18 @@ export function ClassForm({ initial, onSave, onCancel, isSaving }: ClassFormProp
                   </span>
                 </button>
                 {isOpen && (
-                  <div style={{ padding: 12 }}>
+                  <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 16 }}>
                     <FeatureEditor features={entry.features}
                       onChange={(features: Feature[]) => updateLevel(entry.level, features)} />
+                    <div>
+                      <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-2)', marginBottom: 8 }}>
+                        Choices at this level
+                      </p>
+                      <ChoiceEditor
+                        choices={entry.choices ?? []}
+                        onChange={(choices: Choice[]) => updateLevelChoices(entry.level, choices)}
+                      />
+                    </div>
                   </div>
                 )}
               </div>

@@ -62,6 +62,12 @@ interface CharacterStore {
   // ── Inspiration ────────────────────────────────────────────
   setInspiration: (value: boolean) => void;
 
+  // ── Elemental Embodiment ──────────────────────────────────
+  setElementalEmbodiment: (element: Character['elementalEmbodiment']) => void;
+
+  // ── Sync derived resource maxes back to stored max ─────────
+  syncResourceMaxes: (resourceMaxes: Record<string, number>) => void;
+
   // ── Generic patch (escape hatch) ───────────────────────────
   patchCharacter: (changes: Partial<Character>) => void;
 }
@@ -225,10 +231,30 @@ export const useCharacterStore = create<CharacterStore>()(
       c.resources
         .filter(r => r.rechargeOn === 'short_rest' || r.rechargeOn === 'long_rest')
         .forEach(r => { r.current = r.max; });
+      // Clear rest-duration embodiment
+      c.elementalEmbodiment = null;
     }),
 
     // ── Inspiration ──────────────────────────────────────────
     setInspiration: (value) => mutate(set, get, c => { c.combat.inspiration = value; }),
+
+    // ── Elemental Embodiment ─────────────────────────────────
+    setElementalEmbodiment: (element) => mutate(set, get, c => {
+      c.elementalEmbodiment = element;
+    }),
+
+    // ── Sync resource maxes from derived stats ────────────────
+    // Call this from useCharacter whenever derived stats change.
+    syncResourceMaxes: (resourceMaxes) => mutate(set, get, c => {
+      for (const r of c.resources) {
+        const newMax = resourceMaxes[r.id];
+        if (newMax !== undefined && newMax !== r.max) {
+          r.max = newMax;
+          // Clamp current if it now exceeds the new max
+          if (r.current > newMax) r.current = newMax;
+        }
+      }
+    }),
 
     // ── Generic patch ────────────────────────────────────────
     patchCharacter: (changes) => mutate(set, get, c => { Object.assign(c, changes); }),

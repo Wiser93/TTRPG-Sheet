@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useUIStore } from '@/store/uiStore';
 import { useItems, useSpells, useClasses, useFeats, useAllSpecies, useBackgrounds } from '@/hooks/useGameDatabase';
 import { upsertItem, deleteItem, upsertSpell, deleteSpell, upsertClass, deleteClass, upsertFeat, deleteFeat, upsertSpecies, upsertBackground } from '@/db/gameDatabase';
+import { elementalShaperClass } from '@/data/elementalShaper';
 import { SlidePanel } from '@/components/ui/SlidePanel';
 import { ItemForm } from './forms/ItemForm';
 import { SpellForm } from './forms/SpellForm';
@@ -33,6 +34,18 @@ export function DatabaseView() {
   const [editing, setEditing] = useState<EditTarget | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [search, setSearch] = useState('');
+  const [seeding, setSeeding] = useState(false);
+
+  async function seedElementalShaper() {
+    if (!confirm('Add the Elemental Shaper class to the database?')) return;
+    setSeeding(true);
+    try {
+      await upsertClass(elementalShaperClass);
+      setDatabaseSection('classes');
+    } finally {
+      setSeeding(false);
+    }
+  }
 
   const sections = [
     { key: 'items' as const,       label: 'Items',       icon: '⚔️',  data: items },
@@ -87,6 +100,17 @@ export function DatabaseView() {
       <header style={{ background: 'var(--bg-1)', borderBottom: '1px solid var(--border)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
         <button onClick={() => setView('home')} style={{ fontSize: 20 }}>←</button>
         <h1 style={{ fontSize: 18, fontWeight: 700, flex: 1 }}>Game Database</h1>
+        {databaseSection === 'classes' && classes?.length === 0 && (
+          <button
+            className="btn btn-ghost"
+            style={{ fontSize: 12 }}
+            onClick={seedElementalShaper}
+            disabled={seeding}
+            title="Add the Elemental Shaper as a starter class"
+          >
+            {seeding ? '…' : '🔥 Add Elemental Shaper'}
+          </button>
+        )}
         <button
           className="btn btn-primary"
           style={{ fontSize: 13 }}

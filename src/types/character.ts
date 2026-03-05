@@ -69,11 +69,32 @@ export interface ActiveCondition {
 // RESOURCES (spell slots, ki, rage, etc.)
 // ============================================================
 
+/**
+ * A formula term for computing a resource's max from derived stats.
+ * All terms in the array are summed. E.g. Elemental Charges:
+ *   [{ type: 'stat_mod', stat: 'wisdom' }, { type: 'half_class_level', classId: 'elemental-shaper' }]
+ */
+export type ResourceFormulaTerm =
+  | { type: 'flat'; value: number }
+  | { type: 'stat_mod'; stat: import('./game').StatKey }
+  | { type: 'proficiency_bonus' }
+  | { type: 'half_class_level'; classId: string }
+  | { type: 'class_level'; classId: string }
+  | { type: 'total_level' };
+
 export interface ResourceState {
   id: string;
   name: string;
   current: number;
+  /** Stored flat max — used when maxFormula is absent */
   max: number;
+  /**
+   * If set, the true max is computed from these terms each render.
+   * The live value lives in DerivedStats.resourceMaxes[id].
+   */
+  maxFormula?: ResourceFormulaTerm[];
+  /** Min value the computed max is clamped to (default 1) */
+  minMax?: number;
   rechargeOn: 'short_rest' | 'long_rest' | 'dawn' | 'never';
 }
 
@@ -255,6 +276,12 @@ export interface Character {
 
   /** Any extra custom fields for house rules */
   customFields?: Record<string, unknown>;
+
+  /**
+   * Elemental Shaper: which element the character is currently embodying.
+   * Set at the start of a rest. Null = none chosen yet.
+   */
+  elementalEmbodiment?: 'water' | 'earth' | 'fire' | 'air' | null;
 }
 
 // ============================================================
@@ -279,4 +306,10 @@ export interface DerivedStats {
   allModifiers: Modifier[];
   spellAttackBonus: Record<string, number>;   // keyed by classId
   spellSaveDC: Record<string, number>;        // keyed by classId
+  /** Resolved max for each resource with a maxFormula, keyed by resource id */
+  resourceMaxes: Record<string, number>;
+  /** Weapon proficiency ids/names granted by DB-sourced choice picks */
+  extraWeaponProfs: string[];
+  extraArmorProfs: string[];
+  extraToolProfs: string[];
 }

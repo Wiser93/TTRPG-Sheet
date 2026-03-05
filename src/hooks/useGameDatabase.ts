@@ -60,3 +60,58 @@ export function useSpell(id: string | undefined) {
 export function useClass(id: string | undefined) {
   return useLiveQuery(() => id ? db.classes.get(id) : undefined, [id]);
 }
+
+// ── Tag/category-filtered queries ─────────────────────────────
+
+/** Items filtered by a tag (e.g. 'martial') */
+export function useItemsByTag(tag: string | undefined) {
+  return useLiveQuery(
+    () => tag
+      ? live(db.items).filter(i => (i.tags ?? []).includes(tag)).sortBy('name')
+      : live(db.items).sortBy('name'),
+    [tag]
+  );
+}
+
+/** Items filtered by category */
+export function useItemsByCategory(category: string | undefined) {
+  return useLiveQuery(
+    () => category
+      ? live(db.items).filter(i => i.category === category).sortBy('name')
+      : live(db.items).sortBy('name'),
+    [category]
+  );
+}
+
+/**
+ * Resolve a ChoiceDbSource into a live list of { id, name } options.
+ * Used by DbSourcedChoicePicker to populate dropdowns/lists dynamically.
+ */
+export function useDbSourceOptions(source: import('@/types/game').ChoiceDbSource | undefined) {
+  const tag = source?.filterTag;
+  const category = source?.filterCategory;
+  const entity = source?.entity;
+
+  return useLiveQuery(async () => {
+    if (!source) return [];
+    if (entity === 'items') {
+      const all = await live(db.items).sortBy('name');
+      return all
+        .filter(i => (!tag || (i.tags ?? []).includes(tag)) && (!category || i.category === category))
+        .map(i => ({ id: i.id, name: i.name, description: i.description }));
+    }
+    if (entity === 'spells') {
+      const all = await live(db.spells).sortBy('name');
+      return all
+        .filter(i => !tag || (i.tags ?? []).includes(tag))
+        .map(i => ({ id: i.id, name: i.name, description: i.description }));
+    }
+    if (entity === 'feats') {
+      const all = await live(db.feats).sortBy('name');
+      return all
+        .filter(i => !tag || (i.tags ?? []).includes(tag))
+        .map(i => ({ id: i.id, name: i.name, description: i.description }));
+    }
+    return [];
+  }, [entity, tag, category]);
+}
