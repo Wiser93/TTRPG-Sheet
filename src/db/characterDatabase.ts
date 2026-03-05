@@ -1,4 +1,4 @@
-import { db, makeDBMeta, markDirty, type DBCharacter } from './schema';
+import { db, makeDBMeta, type DBCharacter } from './schema';
 import type { Character } from '@/types/character';
 import { buildDefaultCharacter } from '@/lib/characterDefaults';
 
@@ -36,14 +36,16 @@ export async function updateCharacter(
   id: string,
   changes: Partial<Character>
 ): Promise<void> {
-  const dirty = markDirty<DBCharacter>({
-    ...changes,
-    meta: {
-      ...(changes.meta ?? {}),
-      updatedAt: new Date().toISOString(),
-    },
+  const now = new Date().toISOString();
+  // Dexie update() accepts a partial object — dot-notation keys let us
+  // update nested fields without reconstructing the whole meta object,
+  // which avoids TypeScript complaining about missing required fields.
+  await db.characters.update(id, {
+    ...(changes as object),
+    'meta.updatedAt': now,
+    updatedAt: now,
+    isDirty: true,
   });
-  await db.characters.update(id, dirty);
 }
 
 /** Convenience: update a single top-level key */
@@ -82,7 +84,6 @@ export async function exportCharacter(id: string): Promise<string> {
 
 export async function importCharacter(json: string): Promise<DBCharacter> {
   const data = JSON.parse(json) as DBCharacter;
-  // Assign a fresh local id to avoid collision
   const now = new Date().toISOString();
   const record: DBCharacter = {
     ...data,
