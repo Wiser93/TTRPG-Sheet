@@ -1,34 +1,47 @@
+import { useState } from 'react';
 import { useCharacterStore } from '@/store/characterStore';
 import type { Character, DerivedStats, ResourceState } from '@/types/character';
+import type { Feature, ActionType } from '@/types/game';
 
-const ELEMENT_ICONS: Record<string, string> = {
-  water: '💧', earth: '🪨', fire: '🔥', air: '💨',
-};
+// ── Constants ─────────────────────────────────────────────────
 
+const ELEMENT_ICONS: Record<string, string> = { water: '💧', earth: '🪨', fire: '🔥', air: '💨' };
 const ELEMENT_COLORS: Record<string, string> = {
-  water: '#61afef',
-  earth: '#e5c07b',
-  fire: '#e06c75',
-  air: '#98c379',
+  water: '#61afef', earth: '#e5c07b', fire: '#e06c75', air: '#98c379',
 };
 
-interface Props { character: Character; derived: DerivedStats; }
+const ACTION_GROUPS: { type: ActionType; label: string; color: string }[] = [
+  { type: 'action',       label: 'Actions',       color: '#e06c75' },
+  { type: 'bonus_action', label: 'Bonus Actions',  color: '#d19a66' },
+  { type: 'reaction',     label: 'Reactions',      color: '#61afef' },
+  { type: 'passive',      label: 'Passive',        color: '#98c379' },
+];
+
+// ── Main component ─────────────────────────────────────────────
+
+interface Props { character: Character; derived: DerivedStats }
 
 export function CombatTab({ character, derived }: Props) {
   const {
     addDeathSave, resetDeathSaves, shortRest, longRest,
-    addCondition, removeCondition,
-    setElementalEmbodiment,
+    addCondition, removeCondition, setElementalEmbodiment,
   } = useCharacterStore();
 
-  // Work out which elements this character has paths in from their class choices
   const knownElements = getKnownElements(character);
   const hasElementalEmbodiment = knownElements.length > 0;
 
-  return (
-    <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
+  // EC resource — special treatment
+  const ecResource = character.resources.find(r => r.id === 'elemental-charges');
+  const otherResources = character.resources.filter(r => r.id !== 'elemental-charges');
 
-      {/* Death saves — only when at 0 HP */}
+  // Features grouped by action type
+  const featuresWithAction = derived.allFeatures.filter(f => f.actionType);
+  const hasActions = featuresWithAction.length > 0;
+
+  return (
+    <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+      {/* ── Death saves ────────────────────────────────────── */}
       {character.health.current === 0 && (
         <div className="card" style={{ borderColor: 'var(--accent-2)' }}>
           <p className="label" style={{ marginBottom: 8 }}>Death Saving Throws</p>
@@ -44,7 +57,12 @@ export function CombatTab({ character, derived }: Props) {
         </div>
       )}
 
-      {/* Elemental Embodiment — shown when character has Elemental Path choices */}
+      {/* ── Elemental Charges (prominent) ──────────────────── */}
+      {ecResource && (
+        <EcPanel resource={ecResource} derivedMax={derived.resourceMaxes[ecResource.id]} />
+      )}
+
+      {/* ── Elemental Embodiment ───────────────────────────── */}
       {hasElementalEmbodiment && (
         <div className="card">
           <p className="label" style={{ marginBottom: 8 }}>Elemental Embodiment</p>
@@ -56,8 +74,7 @@ export function CombatTab({ character, derived }: Props) {
               const active = character.elementalEmbodiment === element;
               const color = ELEMENT_COLORS[element];
               return (
-                <button
-                  key={element}
+                <button key={element}
                   onClick={() => setElementalEmbodiment(active ? null : element as Character['elementalEmbodiment'])}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 6,
@@ -87,17 +104,34 @@ export function CombatTab({ character, derived }: Props) {
         </div>
       )}
 
-      {/* Resources */}
-      {character.resources.length > 0 && (
+      {/* ── Actions / Bonus Actions / Reactions / Passive ──── */}
+      {hasActions && ACTION_GROUPS.map(group => {
+        const features = featuresWithAction.filter(f => f.actionType === group.type);
+        if (features.length === 0) return null;
+        return (
+          <div key={group.type} className="card">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <div style={{ width: 10, height: 10, borderRadius: '50%', background: group.color, flexShrink: 0 }} />
+              <p className="label">{group.label}</p>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {features.map(f => <ActionCard key={f.id} feature={f} accentColor={group.color} />)}
+            </div>
+          </div>
+        );
+      })}
+
+      {/* ── Other resources ────────────────────────────────── */}
+      {otherResources.length > 0 && (
         <div className="card">
           <p className="label" style={{ marginBottom: 8 }}>Resources</p>
-          {character.resources.map(r => (
+          {otherResources.map(r => (
             <ResourceRow key={r.id} resource={r} derivedMax={derived.resourceMaxes[r.id]} />
           ))}
         </div>
       )}
 
-      {/* Conditions */}
+      {/* ── Conditions ─────────────────────────────────────── */}
       <div className="card">
         <p className="label" style={{ marginBottom: 8 }}>Conditions</p>
         {character.conditions.length === 0 ? (
@@ -126,7 +160,7 @@ export function CombatTab({ character, derived }: Props) {
         </button>
       </div>
 
-      {/* Rests */}
+      {/* ── Rests ──────────────────────────────────────────── */}
       <div className="card">
         <p className="label" style={{ marginBottom: 8 }}>Rests</p>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -139,7 +173,167 @@ export function CombatTab({ character, derived }: Props) {
   );
 }
 
-// ── Helpers ───────────────────────────────────────────────────
+// ── Elemental Charges panel ────────────────────────────────────
+
+function EcPanel({ resource, derivedMax }: { resource: ResourceState; derivedMax?: number }) {
+  const { expendResource, restoreResource } = useCharacterStore();
+  const max = derivedMax ?? resource.max;
+  const current = resource.current;
+
+  return (
+    <div className="card" style={{ border: '2px solid var(--accent)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <p className="label">⚡ Elemental Charges</p>
+        <span style={{ fontSize: 12, color: 'var(--text-2)' }}>long rest · auto-calculated</span>
+      </div>
+
+      {/* Big numeric counter */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, marginBottom: 10 }}>
+        <button onClick={() => expendResource(resource.id)} className="btn btn-ghost"
+          style={{ fontSize: 22, padding: '4px 14px', fontWeight: 700 }}>−</button>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 40, fontWeight: 900, lineHeight: 1, color: 'var(--accent)' }}>{current}</div>
+          <div style={{ fontSize: 13, color: 'var(--text-2)' }}>/ {max}</div>
+        </div>
+        <button onClick={() => restoreResource(resource.id, 1)} className="btn btn-ghost"
+          style={{ fontSize: 22, padding: '4px 14px', fontWeight: 700 }}>+</button>
+      </div>
+
+      {/* Pip row */}
+      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'center' }}>
+        {Array.from({ length: max }).map((_, i) => (
+          <button key={i}
+            onClick={() => i < current ? expendResource(resource.id) : restoreResource(resource.id, 1)}
+            style={{
+              width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
+              background: i < current ? 'var(--accent)' : 'var(--bg-2)',
+              border: '2px solid var(--accent)',
+              transition: 'background 100ms',
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Action card ────────────────────────────────────────────────
+
+function ActionCard({ feature, accentColor }: { feature: Feature; accentColor: string }) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div style={{
+      border: `1px solid var(--border)`,
+      borderLeft: `3px solid ${accentColor}`,
+      borderRadius: 6, overflow: 'hidden',
+      background: 'var(--bg-2)',
+    }}>
+      <button
+        onClick={() => setExpanded(!expanded)}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center',
+          gap: 8, padding: '8px 10px', textAlign: 'left',
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ fontWeight: 600, fontSize: 13 }}>{feature.name}</span>
+          {feature.cost && (
+            <span style={{
+              marginLeft: 8, fontSize: 11, fontWeight: 700,
+              color: accentColor, background: `color-mix(in srgb, ${accentColor} 15%, var(--bg-1))`,
+              border: `1px solid color-mix(in srgb, ${accentColor} 35%, transparent)`,
+              borderRadius: 3, padding: '1px 5px',
+            }}>
+              {feature.cost}
+            </span>
+          )}
+          {feature.uses && !expanded && (
+            <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--text-2)' }}>
+              ({feature.uses.max.type === 'flat' ? feature.uses.max.value : '?'} uses)
+            </span>
+          )}
+        </div>
+        <span style={{ fontSize: 12, color: 'var(--text-2)', flexShrink: 0 }}>{expanded ? '▲' : '▼'}</span>
+      </button>
+      {expanded && (
+        <div style={{ padding: '0 10px 10px', borderTop: '1px solid var(--border)' }}>
+          <p style={{ fontSize: 12, color: 'var(--text-1)', marginTop: 8, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+            {feature.description}
+          </p>
+          {feature.uses && (
+            <p style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 6 }}>
+              Uses: {feature.uses.max.type === 'flat' ? feature.uses.max.value : '?'} per {feature.uses.rechargeOn.replace('_', ' ')}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Resource row (generic) ─────────────────────────────────────
+
+function ResourceRow({ resource, derivedMax }: { resource: ResourceState; derivedMax?: number }) {
+  const { expendResource, restoreResource } = useCharacterStore();
+  const displayMax = derivedMax ?? resource.max;
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 13, fontWeight: 600 }}>{resource.name}</div>
+        <div style={{ fontSize: 11, color: 'var(--text-2)' }}>
+          {resource.rechargeOn.replace('_', ' ')}
+        </div>
+      </div>
+      {displayMax <= 10 ? (
+        <div style={{ display: 'flex', gap: 3 }}>
+          {Array.from({ length: displayMax }).map((_, i) => (
+            <button key={i}
+              onClick={() => i < resource.current ? expendResource(resource.id) : restoreResource(resource.id, 1)}
+              style={{
+                width: 20, height: 20, borderRadius: '50%',
+                background: i < resource.current ? 'var(--accent)' : 'var(--bg-2)',
+                border: '2px solid var(--accent)', flexShrink: 0,
+              }} />
+          ))}
+        </div>
+      ) : (
+        <>
+          <button onClick={() => expendResource(resource.id)} className="btn btn-ghost"
+            style={{ padding: '2px 8px' }}>−</button>
+          <span style={{ minWidth: 48, textAlign: 'center', fontWeight: 700, fontSize: 15 }}>
+            {resource.current}/{displayMax}
+          </span>
+          <button onClick={() => restoreResource(resource.id, 1)} className="btn btn-ghost"
+            style={{ padding: '2px 8px' }}>+</button>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Save row ───────────────────────────────────────────────────
+
+function SaveRow({ label, count, color, onAdd }: {
+  label: string; count: number; color: string; onAdd: () => void;
+}) {
+  return (
+    <div>
+      <p style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 4 }}>{label}</p>
+      <div style={{ display: 'flex', gap: 4 }}>
+        {[0, 1, 2].map(i => (
+          <button key={i} onClick={onAdd} style={{
+            width: 24, height: 24, borderRadius: '50%',
+            background: i < count ? color : 'var(--bg-2)',
+            border: `2px solid ${color}`,
+          }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Helpers ────────────────────────────────────────────────────
 
 function getKnownElements(character: Character): string[] {
   const elements = new Set<string>();
@@ -156,75 +350,9 @@ function getKnownElements(character: Character): string[] {
 function getEmbodimentBonus(element: string): string {
   switch (element) {
     case 'water': return 'Roll max on 1 hit die + reroll 1s. Share healing with allies.';
-    case 'earth': return 'Gain (Prof)d4 temp HP at the start of rest. Unspent temp HP carries over.';
+    case 'earth': return 'Gain (Prof)d4 temp HP at rest start. Unspent temp HP carries over.';
     case 'fire':  return '+Prof to initiative. Add 1d6 to STR-based checks.';
-    case 'air':   return 'Fall ≤60ft/round. Move 15ft laterally per 10ft of altitude change. Add 1d6 to DEX checks.';
+    case 'air':   return 'Fall ≤60ft/round. 15ft lateral movement per 10ft altitude change. Add 1d6 to DEX checks.';
     default:      return '';
   }
-}
-
-// ── Sub-components ─────────────────────────────────────────────
-
-function SaveRow({ label, count, color, onAdd }: {
-  label: string; count: number; color: string; onAdd: () => void;
-}) {
-  return (
-    <div>
-      <p style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 4 }}>{label}</p>
-      <div style={{ display: 'flex', gap: 4 }}>
-        {[0,1,2].map(i => (
-          <button key={i} onClick={onAdd} style={{
-            width: 24, height: 24, borderRadius: '50%',
-            background: i < count ? color : 'var(--bg-2)',
-            border: `2px solid ${color}`,
-          }} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ResourceRow({ resource, derivedMax }: { resource: ResourceState; derivedMax?: number }) {
-  const { expendResource, restoreResource } = useCharacterStore();
-  const displayMax = derivedMax ?? resource.max;
-
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 13, fontWeight: 600 }}>{resource.name}</div>
-        <div style={{ fontSize: 11, color: 'var(--text-2)' }}>
-          {resource.rechargeOn.replace('_', ' ')}
-          {resource.maxFormula ? ' · auto-calculated' : ''}
-        </div>
-      </div>
-      {/* Pip display for small pools (≤10), numeric for larger */}
-      {displayMax <= 10 ? (
-        <div style={{ display: 'flex', gap: 3 }}>
-          {Array.from({ length: displayMax }).map((_, i) => (
-            <button key={i}
-              onClick={() => i < resource.current
-                ? expendResource(resource.id)
-                : restoreResource(resource.id, 1)}
-              style={{
-                width: 20, height: 20, borderRadius: '50%',
-                background: i < resource.current ? 'var(--accent)' : 'var(--bg-2)',
-                border: '2px solid var(--accent)',
-                flexShrink: 0,
-              }}
-            />
-          ))}
-        </div>
-      ) : (
-        <>
-          <button onClick={() => expendResource(resource.id)} className="btn btn-ghost"
-            style={{ padding: '2px 8px' }}>−</button>
-          <span style={{ minWidth: 48, textAlign: 'center', fontWeight: 700, fontSize: 15 }}>
-            {resource.current}/{displayMax}
-          </span>
-          <button onClick={() => restoreResource(resource.id, 1)} className="btn btn-ghost"
-            style={{ padding: '2px 8px' }}>+</button>
-        </>
-      )}
-    </div>
-  );
 }

@@ -104,10 +104,21 @@ export interface Choice {
 // FEATURE
 // ============================================================
 
+/** How the feature is used in combat — drives the Combat tab grouping */
+export type ActionType = 'action' | 'bonus_action' | 'reaction' | 'passive';
+
 export interface Feature {
   id: string;
   name: string;
   description: string;
+  /**
+   * How this ability is used. Features with an actionType appear in the
+   * Combat tab grouped by action economy. Omit for informational features
+   * that don't need to appear there.
+   */
+  actionType?: ActionType;
+  /** Free-text cost shown in Combat tab (e.g. "1 EC", "1 use", "free") */
+  cost?: string;
   /** Choices the player must make when gaining this feature */
   choices?: Choice[];
   /** E.g. uses per short/long rest */

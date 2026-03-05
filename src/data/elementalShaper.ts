@@ -66,6 +66,7 @@ export const elementalShaperClass: Omit<GameClass, 'id'> & { id: string } = {
             'You have Elemental Charges (EC) equal to your WIS modifier + half your Shaper ' +
             'level (minimum 1). They recharge on a long rest.\n\n' +
             'Your Elemental Save DC = 8 + Proficiency Bonus + WIS modifier.',
+          actionType: 'passive' as const,
           tags: ['resource', 'core'],
         },
       ],
@@ -91,6 +92,7 @@ export const elementalShaperClass: Omit<GameClass, 'id'> & { id: string } = {
         {
           id: 'elemental-embodiment',
           name: 'Elemental Embodiment',
+          actionType: 'passive' as const,
           description:
             'At the start of a long rest or short rest in which you roll hit dice, choose one ' +
             'known element to embody until your next rest.\n\n' +
@@ -143,6 +145,8 @@ export const elementalShaperClass: Omit<GameClass, 'id'> & { id: string } = {
             'Once per long rest, shroud yourself in your known element(s). For 1 turn you become ' +
             'invulnerable and cannot take any action or movement. On the turn after, regain EC equal ' +
             'to twice your WIS modifier and all techniques cost 0 EC.',
+          actionType: 'action' as const,
+          cost: '1/long rest',
           uses: { max: { type: 'flat', value: 1 }, rechargeOn: 'long_rest' },
           tags: ['combat', 'resource'],
         },
@@ -152,6 +156,7 @@ export const elementalShaperClass: Omit<GameClass, 'id'> & { id: string } = {
           description:
             'When you take the Attack action, you may replace one of your weapon attacks with an ' +
             'Elemental Technique that costs 1 EC or less.',
+          actionType: 'action' as const,
           tags: ['combat'],
         },
       ],
@@ -169,6 +174,8 @@ export const elementalShaperClass: Omit<GameClass, 'id'> & { id: string } = {
             'Spend 1 EC as part of a weapon attack to imbue it with an element you know. ' +
             'That attack deals 1d8 extra damage of the element\'s type:\n' +
             '• Water → Cold\n• Earth → Magical Bludgeoning\n• Fire → Fire\n• Air → Thunder',
+          actionType: 'action' as const,
+          cost: '1 EC',
           tags: ['combat', 'damage'],
         },
       ],
@@ -203,6 +210,7 @@ export const elementalShaperClass: Omit<GameClass, 'id'> & { id: string } = {
         {
           id: 'elemental-resonance',
           name: 'Elemental Resonance',
+          actionType: 'passive' as const,
           description:
             'When you use the same element two rounds in a row, gain a cumulative benefit:\n' +
             '• Water: Reduce the cost of the first Augment used next turn by 1 EC.\n' +
@@ -243,6 +251,7 @@ export const elementalShaperClass: Omit<GameClass, 'id'> & { id: string } = {
         {
           id: 'elemental-overflow',
           name: 'Elemental Overflow',
+          actionType: 'passive' as const,
           description:
             'Once per turn, when you take the Attack action, one weapon attack is automatically ' +
             'enhanced by Imbued Strike for free (no EC cost). This free use cannot apply to attacks ' +
@@ -258,6 +267,7 @@ export const elementalShaperClass: Omit<GameClass, 'id'> & { id: string } = {
         {
           id: 'elemental-wellspring',
           name: 'Elemental Wellspring',
+          actionType: 'passive' as const,
           description:
             'When you roll initiative with 0 EC remaining, regain half your EC pool (rounded down).\n\n' +
             'Once per long rest, you may ignore EC costs for a number of rounds equal to your WIS modifier.',
@@ -275,6 +285,8 @@ export const elementalShaperClass: Omit<GameClass, 'id'> & { id: string } = {
         {
           id: 'avatar-form',
           name: 'Avatar Form',
+          actionType: 'bonus_action' as const,
+          cost: '1/long rest',
           description:
             'Once per long rest, as a bonus action, become a living conduit of the elements for 1 minute:\n' +
             '• Immediately regain all spent EC.\n' +

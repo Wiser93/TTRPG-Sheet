@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import type { Feature } from '@/types/game';
-import { LabeledInput, LabeledTextarea } from './FormField';
+import type { Feature, ActionType } from '@/types/game';
+import { LabeledInput, LabeledSelect, LabeledTextarea } from './FormField';
 
 interface FeatureEditorProps {
   features: Feature[];
@@ -13,6 +13,20 @@ const BLANK_FEATURE = (): Feature => ({
   description: '',
   tags: [],
 });
+
+const ACTION_TYPE_LABELS: Record<ActionType, string> = {
+  action:       'Action',
+  bonus_action: 'Bonus',
+  reaction:     'Reaction',
+  passive:      'Passive',
+};
+
+const ACTION_TYPE_COLORS: Record<ActionType, string> = {
+  action:       '#e06c75',
+  bonus_action: '#d19a66',
+  reaction:     '#61afef',
+  passive:      '#98c379',
+};
 
 export function FeatureEditor({ features, onChange }: FeatureEditorProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -61,6 +75,15 @@ export function FeatureEditor({ features, onChange }: FeatureEditorProps) {
               style={{ flex: 1, textAlign: 'left', fontSize: 13, fontWeight: f.name ? 600 : 400, color: f.name ? 'var(--text-0)' : 'var(--text-2)' }}
             >
               {f.name || '(unnamed feature)'}
+              {f.actionType && (
+                <span style={{
+                  fontSize: 10, fontWeight: 700, letterSpacing: '0.06em',
+                  background: ACTION_TYPE_COLORS[f.actionType],
+                  color: '#fff', borderRadius: 3, padding: '1px 5px', marginLeft: 6,
+                }}>
+                  {ACTION_TYPE_LABELS[f.actionType]}
+                </span>
+              )}
             </button>
             <button type="button" onClick={() => remove(f.id)}
               style={{ fontSize: 16, color: 'var(--accent-2)', lineHeight: 1, padding: '0 2px' }}>×</button>
@@ -74,6 +97,28 @@ export function FeatureEditor({ features, onChange }: FeatureEditorProps) {
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => update(f.id, { name: e.target.value })}
                 placeholder="e.g. Darkvision"
               />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <LabeledSelect
+                  label="Action Type"
+                  value={f.actionType ?? ''}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                    update(f.id, { actionType: (e.target.value || undefined) as ActionType | undefined })}
+                  options={[
+                    { value: '', label: '— None (informational) —' },
+                    { value: 'action',       label: 'Action' },
+                    { value: 'bonus_action', label: 'Bonus Action' },
+                    { value: 'reaction',     label: 'Reaction' },
+                    { value: 'passive',      label: 'Passive' },
+                  ]}
+                />
+                <LabeledInput
+                  label="Cost (optional)"
+                  value={f.cost ?? ''}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    update(f.id, { cost: e.target.value || undefined })}
+                  placeholder="e.g. 1 EC, 1 use, free"
+                />
+              </div>
               <LabeledTextarea
                 label="Description"
                 value={f.description}
