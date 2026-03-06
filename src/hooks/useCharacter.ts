@@ -16,14 +16,15 @@ export function useCharacter(characterId: string | null) {
 
   // Live-query classes, species, etc. for derived stat calculation
   const gameData = useLiveQuery(async () => {
-    const [classes, subclasses, species, backgrounds, feats] = await Promise.all([
+    const [classes, subclasses, species, backgrounds, feats, features] = await Promise.all([
       db.classes.toArray(),
       db.subclasses.toArray(),
       db.species.toArray(),
       db.backgrounds.toArray(),
       db.feats.toArray(),
+      db.features.filter(f => !f.deletedAt).toArray(),
     ]);
-    return { classes, subclasses, species, backgrounds, feats };
+    return { classes, subclasses, species, backgrounds, feats, features };
   }, []);
 
   // Load character into store on mount / id change

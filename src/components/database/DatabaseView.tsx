@@ -12,7 +12,7 @@ import { SpeciesForm } from './forms/SpeciesForm';
 import { BackgroundForm } from './forms/BackgroundForm';
 import type { Item, Spell, GameClass, Feat, Species, Background } from '@/types/game';
 
-type SectionKey = 'items' | 'spells' | 'classes' | 'feats' | 'species' | 'backgrounds';
+type SectionKey = 'items' | 'spells' | 'classes' | 'feats' | 'species' | 'backgrounds' | 'features';
 
 type EditTarget =
   | { type: 'items'; record?: Item }
@@ -30,6 +30,7 @@ export function DatabaseView() {
   const feats = useFeats();
   const species = useAllSpecies();
   const backgrounds = useBackgrounds();
+  const features = useFeatures();
 
   const [editing, setEditing] = useState<EditTarget | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -54,6 +55,7 @@ export function DatabaseView() {
     { key: 'feats' as const,       label: 'Feats',       icon: '⭐',  data: feats },
     { key: 'species' as const,     label: 'Species',     icon: '🧬',  data: species },
     { key: 'backgrounds' as const, label: 'Backgrounds', icon: '📖',  data: backgrounds },
+    { key: 'features' as const,    label: 'Features',    icon: '⚡',  data: features },
   ];
 
   const active = sections.find(s => s.key === databaseSection)!;
@@ -72,6 +74,7 @@ export function DatabaseView() {
       else if (editing?.type === 'feats')  await upsertFeat({ ...(data as Omit<Feat,'id'>), id });
       else if (editing?.type === 'species') await upsertSpecies({ ...(data as Omit<Species,'id'>), id });
       else if (editing?.type === 'backgrounds') await upsertBackground({ ...(data as Omit<Background,'id'>), id });
+      else if (editing?.type === 'features') await upsertFeature({ ...(data as Omit<Feature,'id'>), id });
       setEditing(null);
     } finally {
       setIsSaving(false);
@@ -80,17 +83,18 @@ export function DatabaseView() {
 
   async function handleDelete(type: SectionKey, id: string) {
     if (!confirm('Delete this entry? This cannot be undone.')) return;
-    if (type === 'items')   await deleteItem(id);
+    if (type === 'items')        await deleteItem(id);
     else if (type === 'spells')  await deleteSpell(id);
     else if (type === 'classes') await deleteClass(id);
     else if (type === 'feats')   await deleteFeat(id);
+    else if (type === 'features') await deleteFeature(id);
   }
 
   // ── Panel title ─────────────────────────────────────────────
 
   function panelTitle() {
     const isEdit = !!editing?.record;
-    const labels: Record<SectionKey, string> = { items:'Item', spells:'Spell', classes:'Class', feats:'Feat', species:'Species', backgrounds:'Background' };
+    const labels: Record<SectionKey, string> = { items:'Item', spells:'Spell', classes:'Class', feats:'Feat', species:'Species', backgrounds:'Background', features:'Feature' };
     return `${isEdit ? 'Edit' : 'New'} ${labels[editing?.type ?? 'items']}`;
   }
 
@@ -200,6 +204,9 @@ export function DatabaseView() {
         {editing?.type === 'backgrounds' && (
           <BackgroundForm initial={editing.record} onSave={handleSave} onCancel={() => setEditing(null)} isSaving={isSaving} />
         )}
+        {editing?.type === 'features' && (
+          <FeatureForm initial={editing.record as Partial<Feature>} onSave={handleSave} isSaving={isSaving} />
+        )}
       </SlidePanel>
     </div>
   );
@@ -258,6 +265,11 @@ function entrySubtitle(entry: Record<string, unknown>, section: SectionKey): str
   if (section === 'backgrounds') {
     const skills = (entry.skillProficiencies as string[] ?? []).join(', ');
     return skills ? `Skills: ${skills}` : '';
+  }
+  if (section === 'features') {
+    const actionType = entry.actionType ? String(entry.actionType).replace('_', ' ') : '';
+    const cost = entry.cost ? String(entry.cost) : '';
+    return [actionType, cost].filter(Boolean).join(' · ');
   }
   return '';
 }

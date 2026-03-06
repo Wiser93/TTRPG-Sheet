@@ -37,6 +37,9 @@ interface CharacterStore {
   updateInventoryEntry: (id: string, changes: Partial<InventoryEntry>) => void;
   removeInventoryEntry: (id: string) => void;
   setEquipped: (slots: EquippedSlots) => void;
+  /** Toggle equip for an inventory entry. Passing slot puts it there; omitting removes it. */
+  equipItem: (inventoryEntryId: string, slot: import('@/types/game').EquipSlot) => void;
+  unequipItem: (inventoryEntryId: string) => void;
 
   // ── Spell slots ────────────────────────────────────────────
   expendSlot: (level: number) => void;
@@ -189,6 +192,20 @@ export const useCharacterStore = create<CharacterStore>()(
       c.inventory = c.inventory.filter(x => x.id !== id);
     }),
     setEquipped: (slots) => mutate(set, get, c => { c.equipped = slots as never; }),
+
+    equipItem: (inventoryEntryId, slot) => mutate(set, get, c => {
+      // Remove from any existing slot first
+      for (const s of Object.keys(c.equipped) as import('@/types/game').EquipSlot[]) {
+        if (c.equipped[s] === inventoryEntryId) delete c.equipped[s];
+      }
+      c.equipped[slot] = inventoryEntryId;
+    }),
+
+    unequipItem: (inventoryEntryId) => mutate(set, get, c => {
+      for (const s of Object.keys(c.equipped) as import('@/types/game').EquipSlot[]) {
+        if (c.equipped[s] === inventoryEntryId) delete c.equipped[s];
+      }
+    }),
 
     // ── Spell slots ──────────────────────────────────────────
     expendSlot: (level) => mutate(set, get, c => {

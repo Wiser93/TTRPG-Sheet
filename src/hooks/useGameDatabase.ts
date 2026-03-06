@@ -114,3 +114,21 @@ export function useDbSourceOptions(source: import('@/types/game').ChoiceDbSource
     return [];
   }, [entity, tag, category]);
 }
+
+/** Live list of all standalone features */
+export function useFeatures() {
+  return useLiveQuery(() => live(db.features).sortBy('name'), []);
+}
+
+/** Single feature by id */
+export function useFeature(id: string | undefined) {
+  return useLiveQuery(() => id ? db.features.get(id) : Promise.resolve(undefined), [id]);
+}
+
+/** Features linked to a specific source (e.g. a class id) */
+export function useFeaturesBySource(sourceId: string | undefined) {
+  return useLiveQuery(
+    () => sourceId ? live(db.features).filter(f => f.sourceId === sourceId).toArray() : Promise.resolve([]),
+    [sourceId]
+  );
+}

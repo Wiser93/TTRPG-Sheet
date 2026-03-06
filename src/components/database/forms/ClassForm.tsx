@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useFeatures } from '@/hooks/useGameDatabase';
 import type { GameClass, StatKey, SkillKey, ClassLevelEntry, Feature, SpellcastingConfig, Choice } from '@/types/game';
 import { LabeledInput, LabeledSelect, LabeledTextarea, FormRow, FormSection } from '@/components/ui/FormField';
 import { CheckboxGroup, TagInput } from '@/components/ui/TagInput';
@@ -58,6 +59,13 @@ export function ClassForm({ initial, onSave, onCancel, isSaving }: ClassFormProp
 
   function updateLevel(level: number, features: Feature[]) {
     const updated = (cls.levelEntries ?? []).map(e => e.level === level ? { ...e, features } : e);
+    patch({ levelEntries: updated });
+  }
+
+  function updateLevelFeatureRefs(level: number, refs: string[]) {
+    const updated = (cls.levelEntries ?? []).map(e =>
+      e.level === level ? { ...e, featureRefs: refs } : e
+    );
     patch({ levelEntries: updated });
   }
 
@@ -219,6 +227,10 @@ export function ClassForm({ initial, onSave, onCancel, isSaving }: ClassFormProp
                   <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 16 }}>
                     <FeatureEditor features={entry.features}
                       onChange={(features: Feature[]) => updateLevel(entry.level, features)} />
+                    <FeatureRefPicker
+                      refs={entry.featureRefs ?? []}
+                      onChange={(refs) => updateLevelFeatureRefs(entry.level, refs)}
+                    />
                     <div>
                       <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-2)', marginBottom: 8 }}>
                         Choices at this level
@@ -243,5 +255,99 @@ export function ClassForm({ initial, onSave, onCancel, isSaving }: ClassFormProp
         </button>
       </div>
     </form>
+  );
+}
+
+// ── Feature ref picker — links standalone DB features to a level ──
+
+function FeatureRefPicker({ refs, onChange }: { refs: string[]; onChange: (refs: string[]) => void }) {
+  const allFeatures = useFeatures() ?? [];
+  const [adding, setAdding] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const linked = allFeatures.filter(f => refs.includes(f.id));
+  const filtered = allFeatures.filter(f =>
+    !refs.includes(f.id) &&
+    (f.name.toLowerCase().includes(search.toLowerCase()) ||
+     (f.tags ?? []).some(t => t.toLowerCase().includes(search.toLowerCase())))
+  );
+
+  if (!adding && linked.length === 0) {
+    return (
+      <button type="button" className="btn btn-ghost"
+        style={{ fontSize: 11, alignSelf: 'flex-start', marginTop: 2 }}
+        onClick={() => setAdding(true)}>
+        + Link DB feature
+      </button>
+    );
+  }
+
+  return (
+    <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
+      <div style={{ background: 'var(--bg-2)', padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          Linked DB Features
+        </span>
+        {!adding && (
+          <button type="button" className="btn btn-ghost" style={{ fontSize: 11 }} onClick={() => setAdding(true)}>
+            + Link
+          </button>
+        )}
+      </div>
+
+      {linked.map(f => (
+        <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderTop: '1px solid var(--border)' }}>
+          <div style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>
+            {f.name}
+            {f.actionType && (
+              <span style={{ marginLeft: 6, fontSize: 10, color: 'var(--accent)', fontWeight: 700 }}>
+                {f.actionType.replace('_', ' ')}
+              </span>
+            )}
+          </div>
+          <button type="button" style={{ color: 'var(--accent-2)', fontSize: 14, lineHeight: 1 }}
+            onClick={() => onChange(refs.filter(id => id !== f.id))}>
+            ×
+          </button>
+        </div>
+      ))}
+
+      {adding && (
+        <div style={{ borderTop: '1px solid var(--border)' }}>
+          <input value={search} autoFocus placeholder="Search features…"
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
+            style={{ width: '100%', borderRadius: 0, borderLeft: 'none', borderRight: 'none', borderTop: 'none', margin: 0 }} />
+          <div style={{ maxHeight: 160, overflowY: 'auto' }}>
+            {allFeatures.length === 0 ? (
+              <p style={{ padding: '8px 10px', fontSize: 12, color: 'var(--text-2)' }}>
+                No features in database yet — create some in the Features tab.
+              </p>
+            ) : filtered.length === 0 ? (
+              <p style={{ padding: '8px 10px', fontSize: 12, color: 'var(--text-2)' }}>No results.</p>
+            ) : filtered.map(f => (
+              <button key={f.id} type="button"
+                onClick={() => { onChange([...refs, f.id]); setSearch(''); setAdding(false); }}
+                style={{ width: '100%', textAlign: 'left', padding: '6px 10px', borderBottom: '1px solid var(--border)', fontSize: 13 }}>
+                <span style={{ fontWeight: 600 }}>{f.name}</span>
+                {f.actionType && (
+                  <span style={{ marginLeft: 6, fontSize: 10, color: 'var(--accent)' }}>
+                    {f.actionType.replace('_', ' ')}
+                  </span>
+                )}
+                {f.description && (
+                  <span style={{ fontSize: 11, color: 'var(--text-2)', marginLeft: 8 }}>
+                    {f.description.slice(0, 60)}{f.description.length > 60 ? '…' : ''}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+          <button type="button" className="btn btn-ghost"
+            style={{ fontSize: 11, margin: 6 }} onClick={() => { setAdding(false); setSearch(''); }}>
+            Cancel
+          </button>
+        </div>
+      )}
+    </div>
   );
 }

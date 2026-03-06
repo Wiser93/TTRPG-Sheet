@@ -203,6 +203,8 @@ export interface Background {
 export interface ClassLevelEntry {
   level: number;
   features: Feature[];
+  /** IDs of standalone DB features linked to this level */
+  featureRefs?: string[];
   /** Slots, ki points, rages, etc. — fully custom */
   resources?: Record<string, number>;
   /** Choices presented at this level */

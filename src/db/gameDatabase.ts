@@ -1,4 +1,4 @@
-import { db, makeDBMeta, markDirty, live, type DBItem, type DBSpell, type DBClass, type DBFeat, type DBSpecies, type DBBackground, type DBSubclass } from './schema';
+import { db, makeDBMeta, markDirty, live, type DBItem, type DBSpell, type DBClass, type DBFeat, type DBFeature, type DBSpecies, type DBBackground, type DBSubclass } from './schema';
 
 // ============================================================
 // GENERIC HELPERS
@@ -187,4 +187,35 @@ export async function upsertSubclass(sc: InsertPayload<DBSubclass> & { id?: stri
   const record: DBSubclass = { ...sc, ...makeDBMeta() } as DBSubclass;
   await db.subclasses.add(record);
   return record.id;
+}
+
+// ============================================================
+// STANDALONE FEATURES
+// ============================================================
+
+export async function getFeatures(): Promise<DBFeature[]> {
+  return live(db.features).toArray();
+}
+
+export async function getFeature(id: string): Promise<DBFeature | undefined> {
+  return db.features.get(id);
+}
+
+export async function getFeaturesBySource(sourceId: string): Promise<DBFeature[]> {
+  return live(db.features).filter(f => f.sourceId === sourceId).toArray();
+}
+
+export async function upsertFeature(feat: InsertPayload<DBFeature> & { id?: string }): Promise<string> {
+  const existing = feat.id ? await db.features.get(feat.id) : undefined;
+  if (existing) {
+    await db.features.put(markDirty<DBFeature>({ ...existing, ...feat }) as DBFeature);
+    return existing.id;
+  }
+  const record: DBFeature = { ...feat, ...makeDBMeta() } as DBFeature;
+  await db.features.add(record);
+  return record.id;
+}
+
+export async function deleteFeature(id: string): Promise<void> {
+  await db.features.update(id, { deletedAt: new Date().toISOString(), isDirty: true });
 }

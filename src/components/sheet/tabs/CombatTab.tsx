@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useCharacterStore } from '@/store/characterStore';
+import { useItems } from '@/hooks/useGameDatabase';
 import type { Character, DerivedStats, ResourceState } from '@/types/character';
 import type { Feature, ActionType } from '@/types/game';
 
@@ -61,6 +62,9 @@ export function CombatTab({ character, derived }: Props) {
       {ecResource && (
         <EcPanel resource={ecResource} derivedMax={derived.resourceMaxes[ecResource.id]} />
       )}
+
+      {/* ── Weapon Attacks ────────────────────────────────── */}
+      <AttacksPanel character={character} derived={derived} />
 
       {/* ── Elemental Embodiment ───────────────────────────── */}
       {hasElementalEmbodiment && (
@@ -355,4 +359,79 @@ function getEmbodimentBonus(element: string): string {
     case 'air':   return 'Fall ≤60ft/round. 15ft lateral movement per 10ft altitude change. Add 1d6 to DEX checks.';
     default:      return '';
   }
+}
+
+// ── Attacks panel ──────────────────────────────────────────────
+
+function AttacksPanel({ character, derived }: { character: Character; derived: DerivedStats }) {
+  const allItems = useItems() ?? [];
+
+  // Find all equipped weapons
+  const equippedWeapons = (Object.entries(character.equipped) as [string, string][])
+    .filter(([slot]) => ['mainHand','offHand','twoHand'].includes(slot))
+    .map(([slot, entryId]) => {
+      const entry = character.inventory.find(i => i.id === entryId);
+      if (!entry) return null;
+      const item = allItems.find(i => i.id === entry.itemId);
+      if (!item?.weaponStats) return null;
+      return { slot, entry, item };
+    })
+    .filter(Boolean) as { slot: string; entry: { id: string; customName?: string }; item: { id: string; name: string; weaponStats: NonNullable<import('@/types/game').Item['weaponStats']> } }[];
+
+  if (equippedWeapons.length === 0) return null;
+
+  const strMod = derived.statMods.strength;
+  const dexMod = derived.statMods.dexterity;
+  const prof   = derived.proficiencyBonus;
+
+  return (
+    <div className="card">
+      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+        <div style={{ width:10, height:10, borderRadius:'50%', background:'#e06c75', flexShrink:0 }} />
+        <p className="label">Attacks</p>
+      </div>
+      <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+        {equippedWeapons.map(({ slot, entry, item }) => {
+          const ws = item.weaponStats;
+          const isFinesse = ws.properties.includes('finesse');
+          const isThrowing = ws.properties.includes('thrown');
+          const atkMod = (isFinesse ? Math.max(strMod, dexMod) : strMod) + prof + (ws.attackBonus ?? 0);
+          const dmgMod = isFinesse ? Math.max(strMod, dexMod) : strMod;
+          const totalDmgMod = dmgMod + (ws.damage.modifier ?? 0);
+          const displayName = (entry as { customName?: string }).customName ?? item.name;
+          const slotLabel = slot === 'mainHand' ? 'Main' : slot === 'offHand' ? 'Off' : '2H';
+
+          return (
+            <div key={entry.id} style={{
+              display:'flex', alignItems:'center', gap:10, padding:'8px 10px',
+              background:'var(--bg-2)', borderRadius:6, border:'1px solid var(--border)',
+              borderLeft:'3px solid #e06c75',
+            }}>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontWeight:600, fontSize:13 }}>{displayName}</div>
+                <div style={{ fontSize:11, color:'var(--text-2)', marginTop:1 }}>
+                  {ws.properties.length > 0 && ws.properties.join(', ')}
+                </div>
+              </div>
+              <div style={{ textAlign:'center', minWidth:50 }}>
+                <div style={{ fontSize:11, color:'var(--text-2)' }}>To Hit</div>
+                <div style={{ fontWeight:800, fontSize:15, color:'var(--accent-4)' }}>
+                  {atkMod >= 0 ? '+' : ''}{atkMod}
+                </div>
+              </div>
+              <div style={{ textAlign:'center', minWidth:70 }}>
+                <div style={{ fontSize:11, color:'var(--text-2)' }}>Damage</div>
+                <div style={{ fontWeight:700, fontSize:13 }}>
+                  {ws.damage.diceCount}d{ws.damage.dieSize}
+                  {totalDmgMod !== 0 ? ` ${totalDmgMod > 0 ? '+' : ''}${totalDmgMod}` : ''}
+                  <span style={{ fontSize:11, color:'var(--text-2)', marginLeft:3 }}>{ws.damageType}</span>
+                </div>
+              </div>
+              <div style={{ fontSize:11, color:'var(--text-2)', minWidth:28, textAlign:'right' }}>{slotLabel}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }

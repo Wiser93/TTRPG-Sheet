@@ -4,13 +4,15 @@ import { useCharacter } from '@/hooks/useCharacter';
 import { StatsSection } from './StatsSection';
 import { OriginsSection } from './OriginsSection';
 import { ClassSection } from './ClassSection';
+import { ProficiencySection } from './ProficiencySection';
 
-type BuilderSection = 'stats' | 'origins' | 'classes';
+type BuilderSection = 'stats' | 'origins' | 'classes' | 'profs';
 
 const SECTIONS: { key: BuilderSection; label: string; icon: string; hint: string }[] = [
   { key: 'stats',   label: 'Ability Scores', icon: '🎲', hint: 'Set your six base stats' },
   { key: 'origins', label: 'Origins',        icon: '🌿', hint: 'Species & background' },
   { key: 'classes', label: 'Classes',        icon: '📜', hint: 'Levels, features & HP' },
+  { key: 'profs',   label: 'Proficiencies',  icon: '🛡', hint: 'Skills, armor, weapons, tools' },
 ];
 
 export function CharacterBuilderView() {
@@ -83,6 +85,7 @@ export function CharacterBuilderView() {
         {activeSection === 'stats'   && <StatsSection stats={character.stats.base} />}
         {activeSection === 'origins' && <OriginsSection character={character} />}
         {activeSection === 'classes' && <ClassSection character={character} derivedMaxHP={derived.maxHP} />}
+        {activeSection === 'profs'   && <ProficiencySection character={character} />}
       </main>
 
       <div style={{
