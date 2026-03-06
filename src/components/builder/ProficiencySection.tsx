@@ -32,7 +32,7 @@ export function ProficiencySection({ character }: Props) {
   const allBackgrounds = useBackgrounds()  ?? [];
 
   // Gather what each source grants
-  const classes = character.classes.map(ce => allClasses.find(c => c.id === ce.classId)).filter((c): c is import('@/types/game').GameClass => !!c);
+  const classes = character.classes.map(ce => allClasses.find(c => c.id === ce.classId)).filter((c): c is NonNullable<typeof c> => !!c);
   const bg       = allBackgrounds.find(b => b.id === character.backgroundId);
 
   // Currently set proficiencies on the character
