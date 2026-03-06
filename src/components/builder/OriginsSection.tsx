@@ -38,12 +38,14 @@ export function OriginsSection({ character }: Props) {
           </div>
         )}
 
-        {activeSpecies && (activeSpecies.creationChoices ?? []).length > 0 && (
+        {activeSpecies && (activeSpecies.creationChoices ?? []).filter(c => c.type !== 'skill_proficiency' && c.type !== 'feat').length > 0 && (
           <div style={{ marginTop: 12, paddingLeft: 12, borderLeft: '2px solid var(--accent)' }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', marginBottom: 8 }}>
               {activeSpecies.name} Choices
             </p>
-            {activeSpecies.creationChoices!.map(choice => (
+            {activeSpecies.creationChoices!
+              .filter(choice => choice.type !== 'skill_proficiency' && choice.type !== 'feat')
+              .map(choice => (
               <ChoicePicker
                 key={choice.id}
                 choice={choice}
@@ -80,12 +82,14 @@ export function OriginsSection({ character }: Props) {
           </div>
         )}
 
-        {activeBackground && (activeBackground.creationChoices ?? []).length > 0 && (
+        {activeBackground && (activeBackground.creationChoices ?? []).filter(c => c.type !== 'skill_proficiency' && c.type !== 'feat').length > 0 && (
           <div style={{ marginTop: 12, paddingLeft: 12, borderLeft: '2px solid var(--accent)' }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', marginBottom: 8 }}>
               {activeBackground.name} Choices
             </p>
-            {activeBackground.creationChoices!.map(choice => (
+            {activeBackground.creationChoices!
+              .filter(choice => choice.type !== 'skill_proficiency' && choice.type !== 'feat')
+              .map(choice => (
               <ChoicePicker
                 key={choice.id}
                 choice={choice}

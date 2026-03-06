@@ -1,7 +1,8 @@
 import { useCharacterStore } from '@/store/characterStore';
-import { useBackgrounds, useClasses } from '@/hooks/useGameDatabase';
-import type { Character } from '@/types/character';
-import type { SkillKey } from '@/types/game';
+import { useBackgrounds, useClasses, useAllSpecies } from '@/hooks/useGameDatabase';
+import { DbSourcedChoicePicker } from '@/components/sheet/DbSourcedChoicePicker';
+import type { Character, ResolvedChoice } from '@/types/character';
+import type { SkillKey, Choice } from '@/types/game';
 import type { DBClass } from '@/db/schema';
 
 const ALL_SKILLS: { key: SkillKey; label: string }[] = [
@@ -28,9 +29,10 @@ const ALL_SKILLS: { key: SkillKey; label: string }[] = [
 interface Props { character: Character }
 
 export function ProficiencySection({ character }: Props) {
-  const { patchCharacter } = useCharacterStore();
+  const { patchCharacter, resolveBuilderChoice } = useCharacterStore();
   const allClasses     = useClasses()      ?? [];
   const allBackgrounds = useBackgrounds()  ?? [];
+  const allSpecies     = useAllSpecies()   ?? [];
 
   // Gather what each source grants
   const classes = character.classes
@@ -75,10 +77,12 @@ export function ProficiencySection({ character }: Props) {
     patchCharacter({ proficiencies: { ...character.proficiencies, tools: arr } });
   }
 
+  const species = allSpecies.find(s => s.id === character.speciesId);
+
   // ── Skill pools ─────────────────────────────────────────────
 
   // Fixed skills from background
-  const bgSkills   = new Set(bg?.skillProficiencies ?? []);
+  const bgSkills   = new Set<SkillKey>(bg?.skillProficiencies ?? []);
   // Chooseable skills from classes
   const classSkillPools: { choose: number; from: SkillKey[] }[] = classes.map((cls: DBClass) => cls.skillProficiencies);
   // How many class-granted skills are currently chosen
@@ -188,6 +192,46 @@ export function ProficiencySection({ character }: Props) {
         addPlaceholder="e.g. thieves' tools"
         onAdd={(name) => toggleTool(name)}
       />
+
+      {/* ── Species skill choices (e.g. "Skillful — choose 1 skill") ── */}
+      {[
+        ...(species?.creationChoices ?? []).filter(c => c.type === 'skill_proficiency').map(c => ({
+          choice: c, resolved: character.speciesChoices, source: 'species' as const, sourceId: species!.id, sourceName: species!.name,
+        })),
+        ...(bg?.creationChoices ?? []).filter(c => c.type === 'skill_proficiency').map(c => ({
+          choice: c, resolved: character.backgroundChoices, source: 'background' as const, sourceId: bg!.id, sourceName: bg!.name,
+        })),
+      ].map(({ choice, resolved, source, sourceId, sourceName }) => (
+        <SkillChoicePicker
+          key={choice.id}
+          choice={choice}
+          allResolved={resolved}
+          sourceName={sourceName}
+          bgSkills={bgSkills}
+          onResolve={r => resolveBuilderChoice(r, source)}
+          context={{ sourceType: source, sourceId, level: 0 }}
+        />
+      ))}
+
+      {/* ── Feat choices (e.g. "Versatile — choose an origin feat") ── */}
+      {[
+        ...(species?.creationChoices ?? []).filter(c => c.type === 'feat').map(c => ({
+          choice: c, resolved: character.speciesChoices, source: 'species' as const, sourceId: species!.id, sourceName: species!.name,
+        })),
+        ...(bg?.creationChoices ?? []).filter(c => c.type === 'feat').map(c => ({
+          choice: c, resolved: character.backgroundChoices, source: 'background' as const, sourceId: bg!.id, sourceName: bg!.name,
+        })),
+      ].map(({ choice, resolved, source, sourceId, sourceName }) => (
+        <div key={choice.id}>
+          <SectionHeading label={`${sourceName}: ${choice.label}`} />
+          <DbSourcedChoicePicker
+            choice={choice}
+            resolved={resolved.find(r => r.choiceId === choice.id)}
+            onChange={r => resolveBuilderChoice(r, source)}
+            context={{ sourceType: source, sourceId }}
+          />
+        </div>
+      ))}
 
     </div>
   );
@@ -308,4 +352,67 @@ function AddProfInput({ placeholder, onAdd }: { placeholder: string; onAdd: (nam
 
 function dedupe(arr: string[]): string[] {
   return Array.from(new Set(arr));
+}
+
+// ── SkillChoicePicker ─────────────────────────────────────────
+// Renders a skill_proficiency choice as a grid of skill chips,
+// styled consistently with the class skill pools above.
+
+function SkillChoicePicker({ choice, allResolved, sourceName, bgSkills, onResolve, context }: {
+  choice: Choice;
+  allResolved: ResolvedChoice[];
+  sourceName: string;
+  bgSkills: Set<SkillKey>;
+  onResolve: (r: ResolvedChoice) => void;
+  context: { sourceType: 'class' | 'species' | 'background' | 'feat'; sourceId: string; level: number };
+}) {
+  const resolved = allResolved.find(r => r.choiceId === choice.id);
+  const selected = new Set<SkillKey>((resolved?.selectedValues ?? []) as SkillKey[]);
+
+  function toggle(key: SkillKey) {
+    let next: SkillKey[];
+    if (selected.has(key)) {
+      next = Array.from(selected).filter(k => k !== key);
+    } else if (selected.size < choice.count) {
+      next = [...Array.from(selected), key];
+    } else if (choice.count === 1) {
+      next = [key];
+    } else {
+      return;
+    }
+    onResolve({
+      id: resolved?.id ?? crypto.randomUUID(),
+      sourceType: context.sourceType,
+      sourceId: context.sourceId,
+      level: context.level,
+      choiceId: choice.id,
+      selectedValues: next,
+    });
+  }
+
+  return (
+    <div>
+      <SectionHeading label={`${sourceName}: ${choice.label}`} />
+      <p style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 8 }}>
+        Choose {choice.count} &middot; {selected.size}/{choice.count} selected
+      </p>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        {ALL_SKILLS.map(({ key, label }) => {
+          const isFixed   = bgSkills.has(key);
+          const isChosen  = selected.has(key);
+          const atMax     = !isChosen && selected.size >= choice.count;
+          return (
+            <ProfChip
+              key={key}
+              label={label}
+              active={isChosen || isFixed}
+              locked={isFixed}
+              disabled={atMax}
+              onClick={() => { if (!isFixed) toggle(key); }}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
 }
