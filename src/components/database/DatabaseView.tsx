@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useUIStore } from '@/store/uiStore';
-import { useItems, useSpells, useClasses, useFeats, useAllSpecies, useBackgrounds } from '@/hooks/useGameDatabase';
-import { upsertItem, deleteItem, upsertSpell, deleteSpell, upsertClass, deleteClass, upsertFeat, deleteFeat, upsertSpecies, upsertBackground } from '@/db/gameDatabase';
+import { useItems, useSpells, useClasses, useFeats, useAllSpecies, useBackgrounds, useFeatures } from '@/hooks/useGameDatabase';
+import { upsertItem, deleteItem, upsertSpell, deleteSpell, upsertClass, deleteClass, upsertFeat, deleteFeat, upsertSpecies, upsertBackground, upsertFeature, deleteFeature } from '@/db/gameDatabase';
 import { elementalShaperClass } from '@/data/elementalShaper';
 import { SlidePanel } from '@/components/ui/SlidePanel';
 import { ItemForm } from './forms/ItemForm';
@@ -10,7 +10,8 @@ import { ClassForm } from './forms/ClassForm';
 import { FeatForm } from './forms/FeatForm';
 import { SpeciesForm } from './forms/SpeciesForm';
 import { BackgroundForm } from './forms/BackgroundForm';
-import type { Item, Spell, GameClass, Feat, Species, Background } from '@/types/game';
+import { FeatureForm } from './forms/FeatureForm';
+import type { Item, Spell, GameClass, Feat, Species, Background, Feature } from '@/types/game';
 
 type SectionKey = 'items' | 'spells' | 'classes' | 'feats' | 'species' | 'backgrounds' | 'features';
 
@@ -20,7 +21,8 @@ type EditTarget =
   | { type: 'classes'; record?: GameClass }
   | { type: 'feats'; record?: Feat }
   | { type: 'species'; record?: Species }
-  | { type: 'backgrounds'; record?: Background };
+  | { type: 'backgrounds'; record?: Background }
+  | { type: 'features'; record?: Feature };
 
 export function DatabaseView() {
   const { databaseSection, setDatabaseSection, setView } = useUIStore();

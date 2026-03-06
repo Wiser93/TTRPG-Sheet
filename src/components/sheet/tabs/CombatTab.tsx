@@ -394,7 +394,6 @@ function AttacksPanel({ character, derived }: { character: Character; derived: D
         {equippedWeapons.map(({ slot, entry, item }) => {
           const ws = item.weaponStats;
           const isFinesse = ws.properties.includes('finesse');
-          const isThrowing = ws.properties.includes('thrown');
           const atkMod = (isFinesse ? Math.max(strMod, dexMod) : strMod) + prof + (ws.attackBonus ?? 0);
           const dmgMod = isFinesse ? Math.max(strMod, dexMod) : strMod;
           const totalDmgMod = dmgMod + (ws.damage.modifier ?? 0);

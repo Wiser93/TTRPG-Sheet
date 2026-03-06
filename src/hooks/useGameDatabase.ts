@@ -128,7 +128,9 @@ export function useFeature(id: string | undefined) {
 /** Features linked to a specific source (e.g. a class id) */
 export function useFeaturesBySource(sourceId: string | undefined) {
   return useLiveQuery(
-    () => sourceId ? live(db.features).filter(f => f.sourceId === sourceId).toArray() : Promise.resolve([]),
+    () => sourceId
+      ? live(db.features).filter(f => f.sourceId === sourceId).toArray()
+      : Promise.resolve([] as import('@/db/schema').DBFeature[]),
     [sourceId]
   );
 }

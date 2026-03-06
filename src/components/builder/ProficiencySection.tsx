@@ -34,7 +34,6 @@ export function ProficiencySection({ character }: Props) {
 
   // Gather what each source grants
   const classes = character.classes.map(ce => allClasses.find(c => c.id === ce.classId)).filter(Boolean);
-  const species  = allSpecies.find(s => s.id === character.speciesId);
   const bg       = allBackgrounds.find(b => b.id === character.backgroundId);
 
   // Currently set proficiencies on the character
@@ -83,8 +82,6 @@ export function ProficiencySection({ character }: Props) {
   // How many class-granted skills are currently chosen
   const classChosenCount = Array.from(skillProfs).filter(k => !bgSkills.has(k)).length;
   const maxClassSkills   = classSkillPools.reduce((s, p) => s + p.choose, 0);
-  const classSkillOptions = new Set(classSkillPools.flatMap(p => p.from));
-
   // ── Fixed prof lists from class ──────────────────────────────
   const fixedArmor   = dedupe(classes.flatMap(c => c!.armorProficiencies));
   const fixedWeapons = dedupe(classes.flatMap(c => c!.weaponProficiencies));
