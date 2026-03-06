@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import type { Species } from '@/types/game';
+import type { Species, SkillKey } from '@/types/game';
 import { LabeledInput, LabeledSelect, LabeledTextarea, FormRow, FormSection } from '@/components/ui/FormField';
 import { FeatureEditor } from '@/components/ui/FeatureEditor';
+import { ChoiceEditor } from '@/components/ui/ChoiceEditor';
 
 interface SpeciesFormProps {
   initial?: Partial<Species>;
@@ -12,7 +13,9 @@ interface SpeciesFormProps {
 
 export function SpeciesForm({ initial, onSave, onCancel, isSaving }: SpeciesFormProps) {
   const [species, setSpecies] = useState<Partial<Species>>(() => ({
-    name: '', description: '', size: 'medium', speed: 30, darkvision: 0, features: [], extraSpeeds: [],
+    name: '', description: '', size: 'medium', speed: 30, darkvision: 0,
+    features: [], extraSpeeds: [], creationChoices: [],
+    skillProficiencies: [], armorProficiencies: [], weaponProficiencies: [], toolProficiencies: [],
     ...initial,
   }));
 
@@ -41,20 +44,27 @@ export function SpeciesForm({ initial, onSave, onCancel, isSaving }: SpeciesForm
       darkvision: species.darkvision ?? 0,
       extraSpeeds: species.extraSpeeds?.length ? species.extraSpeeds : undefined,
       features: species.features ?? [],
-      creationChoices: species.creationChoices ?? [],
+      creationChoices: species.creationChoices?.length ? species.creationChoices : undefined,
+      skillProficiencies: species.skillProficiencies?.length ? species.skillProficiencies as SkillKey[] : undefined,
+      armorProficiencies: species.armorProficiencies?.length ? species.armorProficiencies : undefined,
+      weaponProficiencies: species.weaponProficiencies?.length ? species.weaponProficiencies : undefined,
+      toolProficiencies: species.toolProficiencies?.length ? species.toolProficiencies : undefined,
+      languages: species.languages ?? undefined,
+      featIds: species.featIds?.length ? species.featIds : undefined,
+      innateSpellIds: species.innateSpellIds?.length ? species.innateSpellIds : undefined,
     });
   }
 
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <FormSection title="Identity">
-        <LabeledInput label="Name" value={species.name ?? ''} required placeholder="e.g. High Elf"
+        <LabeledInput label="Name" value={species.name ?? ''} required placeholder="e.g. Human"
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => patch({ name: e.target.value })} />
-        <LabeledTextarea label="Description" value={species.description ?? ''} rows={3} placeholder="Brief description of this species…"
+        <LabeledTextarea label="Description" value={species.description ?? ''} rows={3} placeholder="Brief description…"
           onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => patch({ description: e.target.value })} />
       </FormSection>
 
-      <FormSection title="Traits">
+      <FormSection title="Physical Traits">
         <FormRow cols={3}>
           <LabeledSelect label="Size" value={species.size ?? 'medium'}
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) => patch({ size: e.target.value as Species['size'] })}
@@ -88,29 +98,47 @@ export function SpeciesForm({ initial, onSave, onCancel, isSaving }: SpeciesForm
         </div>
       </FormSection>
 
-      <FormSection title="Racial Features">
-        <FeatureEditor features={species.features ?? []}
-          onChange={(features) => patch({ features })} />
-      </FormSection>
-
-      <FormSection title="Proficiencies & Grants">
-        <ProfListInput label="Skill Proficiencies"
-          hint="Fixed skills this species grants (e.g. perception)"
-          value={(species.skillProficiencies ?? []).join(', ')}
-          onChange={v => patch({ skillProficiencies: v.split(',').map(s => s.trim()).filter(Boolean) as import('@/types/game').SkillKey[] })} />
+      <FormSection title="Fixed Proficiencies">
+        <p style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 8 }}>
+          These are granted automatically to every character of this species.
+          For player choice (e.g. "one skill of your choice"), use Creation Choices below.
+        </p>
+        <ProfListInput label="Skill Proficiencies (comma-separated)"
+          initialValue={(species.skillProficiencies ?? []).join(', ')}
+          onChange={v => patch({ skillProficiencies: v.split(',').map(s => s.trim()).filter(Boolean) as SkillKey[] })} />
         <ProfListInput label="Armor Proficiencies"
-          value={(species.armorProficiencies ?? []).join(', ')}
+          initialValue={(species.armorProficiencies ?? []).join(', ')}
           onChange={v => patch({ armorProficiencies: v.split(',').map(s => s.trim()).filter(Boolean) })} />
         <ProfListInput label="Weapon Proficiencies"
-          value={(species.weaponProficiencies ?? []).join(', ')}
+          initialValue={(species.weaponProficiencies ?? []).join(', ')}
           onChange={v => patch({ weaponProficiencies: v.split(',').map(s => s.trim()).filter(Boolean) })} />
         <ProfListInput label="Tool Proficiencies"
-          value={(species.toolProficiencies ?? []).join(', ')}
+          initialValue={(species.toolProficiencies ?? []).join(', ')}
           onChange={v => patch({ toolProficiencies: v.split(',').map(s => s.trim()).filter(Boolean) })} />
         <LabeledInput label="Bonus Languages (number of free picks)"
           type="number" min={0}
           value={typeof species.languages === 'number' ? species.languages : 0}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => patch({ languages: Number(e.target.value) || undefined })} />
+      </FormSection>
+
+      <FormSection title="Racial Features">
+        <p style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 8 }}>
+          Inline features defined directly on this species. You can also link DB features via Creation Choices below.
+        </p>
+        <FeatureEditor features={species.features ?? []}
+          onChange={(features) => patch({ features })} />
+      </FormSection>
+
+      <FormSection title="Creation Choices">
+        <p style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 10 }}>
+          Choices the player makes when selecting this species — e.g. "choose one skill" or "choose an origin feat".
+          Use <strong>Populate from database</strong> → <strong>Features</strong> or <strong>Feats</strong> with a tag filter for broad picks.
+          Use <strong>Skill Proficiency</strong> type for open skill selection.
+        </p>
+        <ChoiceEditor
+          choices={species.creationChoices ?? []}
+          onChange={choices => patch({ creationChoices: choices })}
+        />
       </FormSection>
 
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 8 }}>
@@ -123,21 +151,25 @@ export function SpeciesForm({ initial, onSave, onCancel, isSaving }: SpeciesForm
   );
 }
 
-// ── Helper: proficiency list input with local string state ────
-function ProfListInput({ label, hint, value, onChange }: {
-  label: string; hint?: string; value: string; onChange: (v: string) => void;
+// ── Proficiency list input (local string state so commas work) ─
+
+function ProfListInput({ label, initialValue, onChange }: {
+  label: string;
+  initialValue: string;
+  onChange: (v: string) => void;
 }) {
+  const [val, setVal] = useState(initialValue);
   return (
     <div>
       <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>
         {label}
       </label>
       <input
-        defaultValue={value}
-        onBlur={(e: React.FocusEvent<HTMLInputElement>) => onChange(e.target.value)}
-        placeholder="comma-separated, e.g. perception, stealth"
+        value={val}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setVal(e.target.value)}
+        onBlur={() => onChange(val)}
+        placeholder="e.g. perception, stealth"
       />
-      {hint && <p style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 3 }}>{hint}</p>}
     </div>
   );
 }

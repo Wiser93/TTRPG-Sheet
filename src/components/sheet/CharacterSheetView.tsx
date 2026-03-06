@@ -4,6 +4,7 @@ import { OverviewTab } from './tabs/OverviewTab';
 import { CombatTab } from './tabs/CombatTab';
 import { SpellsTab } from './tabs/SpellsTab';
 import { InventoryTab } from './tabs/InventoryTab';
+import { FeaturesTab } from './tabs/FeaturesTab';
 
 const TABS: { key: SheetTab; label: string; icon: string }[] = [
   { key: 'overview',  label: 'Overview',  icon: '⚔️' },
@@ -69,7 +70,7 @@ export function CharacterSheetView() {
         {sheetTab === 'combat'    && <CombatTab character={character} derived={derived} />}
         {sheetTab === 'spells'    && <SpellsTab character={character} derived={derived} />}
         {sheetTab === 'inventory' && <InventoryTab character={character} derived={derived} />}
-        {sheetTab === 'features'  && <div style={{ padding: 16, color: 'var(--text-2)' }}>Features tab — coming soon</div>}
+        {sheetTab === 'features'  && <FeaturesTab character={character} derived={derived} />}
         {sheetTab === 'biography' && <div style={{ padding: 16, color: 'var(--text-2)' }}>Biography tab — coming soon</div>}
       </main>
 

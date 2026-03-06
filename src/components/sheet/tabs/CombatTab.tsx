@@ -125,15 +125,10 @@ export function CombatTab({ character, derived }: Props) {
         );
       })}
 
-      {/* ── Other resources ────────────────────────────────── */}
-      {otherResources.length > 0 && (
-        <div className="card">
-          <p className="label" style={{ marginBottom: 8 }}>Resources</p>
-          {otherResources.map(r => (
-            <ResourceRow key={r.id} resource={r} derivedMax={derived.resourceMaxes[r.id]} />
-          ))}
-        </div>
-      )}
+      {/* ── Other resources — full counter card per resource ─ */}
+      {otherResources.map(r => (
+        <ResourcePanel key={r.id} resource={r} derivedMax={derived.resourceMaxes[r.id]} />
+      ))}
 
       {/* ── Conditions ─────────────────────────────────────── */}
       <div className="card">
@@ -275,42 +270,43 @@ function ActionCard({ feature, accentColor }: { feature: Feature; accentColor: s
   );
 }
 
-// ── Resource row (generic) ─────────────────────────────────────
+// ── Resource panel (full card, like EcPanel) ──────────────────
 
-function ResourceRow({ resource, derivedMax }: { resource: ResourceState; derivedMax?: number }) {
+function ResourcePanel({ resource, derivedMax }: { resource: ResourceState; derivedMax?: number }) {
   const { expendResource, restoreResource } = useCharacterStore();
-  const displayMax = derivedMax ?? resource.max;
+  const max = derivedMax ?? resource.max;
+  const current = resource.current;
+  const usePips = max <= 12;
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 13, fontWeight: 600 }}>{resource.name}</div>
-        <div style={{ fontSize: 11, color: 'var(--text-2)' }}>
-          {resource.rechargeOn.replace('_', ' ')}
+    <div className="card" style={{ border: '1px solid var(--accent-4)', borderRadius: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <div>
+          <p style={{ fontWeight: 700, fontSize: 15 }}>{resource.name}</p>
+          <p style={{ fontSize: 11, color: 'var(--text-2)' }}>{resource.rechargeOn.replace(/_/g, ' ')}</p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button onClick={() => expendResource(resource.id)} className="btn btn-ghost"
+            style={{ fontSize: 20, padding: '2px 10px', fontWeight: 700 }}>−</button>
+          <span style={{ minWidth: 64, textAlign: 'center', fontWeight: 800, fontSize: 26, fontVariantNumeric: 'tabular-nums' }}>
+            {current}<span style={{ fontSize: 14, fontWeight: 400, color: 'var(--text-2)' }}>/{max}</span>
+          </span>
+          <button onClick={() => restoreResource(resource.id, 1)} className="btn btn-ghost"
+            style={{ fontSize: 20, padding: '2px 10px', fontWeight: 700 }}>+</button>
         </div>
       </div>
-      {displayMax <= 10 ? (
-        <div style={{ display: 'flex', gap: 3 }}>
-          {Array.from({ length: displayMax }).map((_, i) => (
+      {usePips && (
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 4 }}>
+          {Array.from({ length: max }).map((_, i) => (
             <button key={i}
-              onClick={() => i < resource.current ? expendResource(resource.id) : restoreResource(resource.id, 1)}
+              onClick={() => i < current ? expendResource(resource.id) : restoreResource(resource.id, 1)}
               style={{
-                width: 20, height: 20, borderRadius: '50%',
-                background: i < resource.current ? 'var(--accent)' : 'var(--bg-2)',
-                border: '2px solid var(--accent)', flexShrink: 0,
+                width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+                background: i < current ? 'var(--accent-4)' : 'var(--bg-2)',
+                border: '2px solid var(--accent-4)', transition: 'background 120ms',
               }} />
           ))}
         </div>
-      ) : (
-        <>
-          <button onClick={() => expendResource(resource.id)} className="btn btn-ghost"
-            style={{ padding: '2px 8px' }}>−</button>
-          <span style={{ minWidth: 48, textAlign: 'center', fontWeight: 700, fontSize: 15 }}>
-            {resource.current}/{displayMax}
-          </span>
-          <button onClick={() => restoreResource(resource.id, 1)} className="btn btn-ghost"
-            style={{ padding: '2px 8px' }}>+</button>
-        </>
       )}
     </div>
   );

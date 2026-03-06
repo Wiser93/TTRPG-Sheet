@@ -124,6 +124,10 @@ export interface Feature {
   actionType?: ActionType;
   /** Free-text cost shown in Combat tab (e.g. "1 EC", "1 use", "free") */
   cost?: string;
+  /** What triggers this feature (e.g. "Long Rest", "When hit", "Reaction") */
+  trigger?: string;
+  /** What the feature does in plain language (e.g. "Gain Heroic Inspiration") */
+  effect?: string;
   /** Choices the player must make when gaining this feature */
   choices?: Choice[];
   /** E.g. uses per short/long rest */

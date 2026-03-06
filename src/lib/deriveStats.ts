@@ -195,24 +195,84 @@ export function deriveStats(character: Character, gameData: GameData): DerivedSt
     character.backgroundChoices
   );
 
+  // ── Resolve feats chosen via DB-sourced feat choices ─────
+  // When a choice has entity:'feats', selectedValues are feat IDs.
+  // Load the feat's features into allFeatures.
+  function resolveGrantedFeats(
+    choices: import('@/types/game').Choice[],
+    resolved: import('@/types/character').ResolvedChoice[]
+  ) {
+    for (const choice of choices) {
+      if (choice.dbSource?.entity !== 'feats') continue;
+      const match = resolved.find(r => r.choiceId === choice.id);
+      if (!match || match.selectedValues.length === 0) continue;
+      for (const featId of match.selectedValues) {
+        const feat = gameData.feats.find(f => f.id === featId);
+        if (!feat) continue;
+        for (const f of (feat.features ?? [])) {
+          if (!allFeatures.some(x => x.id === f.id)) {
+            allFeatures.push(f);
+            allModifiers.push(...(f.modifiers ?? []));
+          }
+        }
+      }
+    }
+  }
+
+  for (const charClass of character.classes) {
+    const cls = gameData.classes.find(c => c.id === charClass.classId);
+    if (!cls) continue;
+    resolveGrantedFeats(cls.creationChoices ?? [], charClass.choices);
+    for (const le of cls.levelEntries) {
+      if (le.level > charClass.level) break;
+      resolveGrantedFeats(le.choices ?? [], charClass.choices);
+    }
+  }
+  resolveGrantedFeats(
+    gameData.species.find(s => s.id === character.speciesId)?.creationChoices ?? [],
+    character.speciesChoices
+  );
+  resolveGrantedFeats(
+    gameData.backgrounds.find(b => b.id === character.backgroundId)?.creationChoices ?? [],
+    character.backgroundChoices
+  );
+
   // ── Merge any weapon/armor/tool proficiencies granted by resolved choices
   // (including DB-sourced picks like "1 martial weapon of your choice")
   const extraWeaponProfs: string[] = [];
   const extraArmorProfs: string[] = [];
   const extraToolProfs: string[] = [];
 
+  const extraSkillProfs: SkillKey[] = [];
+
   function resolveChoiceProfs(choices: import('@/types/game').Choice[], resolved: import('@/types/character').ResolvedChoice[]) {
     for (const choice of choices) {
-      if (!choice.dbSource?.grantsType) continue;
       const match = resolved.find(r => r.choiceId === choice.id);
       if (!match || match.selectedValues.length === 0) continue;
-      // For DB-sourced choices, selectedValues are item IDs — we store the name
-      // via the item lookup below. For now, store ids and let the sheet resolve labels.
-      const { grantsType } = choice.dbSource;
-      for (const val of match.selectedValues) {
-        if (grantsType === 'weapon_proficiency') extraWeaponProfs.push(val);
-        else if (grantsType === 'armor_proficiency') extraArmorProfs.push(val);
-        else if (grantsType === 'tool_proficiency') extraToolProfs.push(val);
+
+      // skill_proficiency type — selectedValues are SkillKey strings
+      if (choice.type === 'skill_proficiency') {
+        for (const val of match.selectedValues) {
+          extraSkillProfs.push(val as SkillKey);
+        }
+      }
+
+      // DB-sourced proficiency grants
+      if (choice.dbSource?.grantsType) {
+        const { grantsType } = choice.dbSource;
+        for (const val of match.selectedValues) {
+          if (grantsType === 'weapon_proficiency') extraWeaponProfs.push(val);
+          else if (grantsType === 'armor_proficiency') extraArmorProfs.push(val);
+          else if (grantsType === 'tool_proficiency') extraToolProfs.push(val);
+        }
+      }
+
+      // Recurse into nested grants from static options
+      for (const selectedId of match.selectedValues) {
+        const opt = (choice.options ?? []).find(o => o.id === selectedId);
+        if (opt?.grants?.length) {
+          resolveChoiceProfs(opt.grants, resolved);
+        }
       }
     }
   }
@@ -227,6 +287,11 @@ export function deriveStats(character: Character, gameData: GameData): DerivedSt
       resolveChoiceProfs(levelEntry.choices ?? [], charClass.choices);
     }
   }
+  // Scan species and background choices
+  const speciesCreationChoices = gameData.species.find(s => s.id === character.speciesId)?.creationChoices ?? [];
+  resolveChoiceProfs(speciesCreationChoices, character.speciesChoices);
+  const bgCreationChoices = gameData.backgrounds.find(b => b.id === character.backgroundId)?.creationChoices ?? [];
+  resolveChoiceProfs(bgCreationChoices, character.backgroundChoices);
 
   // Apply species fixed proficiencies
   if (character.speciesId) {
@@ -258,7 +323,7 @@ export function deriveStats(character: Character, gameData: GameData): DerivedSt
       const state = character.skills[skill];
       const base = statMods[SKILL_STAT[skill]];
       // Proficient if stored on character OR granted by background/species
-      const isProficient = state.proficient || bgSkillProfs.has(skill) || speciesSkillProfs.has(skill);
+      const isProficient = state.proficient || bgSkillProfs.has(skill) || speciesSkillProfs.has(skill) || extraSkillProfs.includes(skill);
       const profMult = state.expertise ? 2 : isProficient ? 1 : 0;
       const bonus = base + profMult * profBonus + state.extraBonus;
       return [skill, { bonus, proficient: isProficient, expert: state.expertise }];

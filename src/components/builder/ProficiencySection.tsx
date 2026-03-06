@@ -1,7 +1,7 @@
 import { useCharacterStore } from '@/store/characterStore';
 import { useBackgrounds, useClasses } from '@/hooks/useGameDatabase';
 import type { Character } from '@/types/character';
-import type { SkillKey } from '@/types/game';
+import type { SkillKey, GameClass } from '@/types/game';
 
 const ALL_SKILLS: { key: SkillKey; label: string }[] = [
   { key: 'acrobatics',    label: 'Acrobatics'    },
@@ -32,7 +32,9 @@ export function ProficiencySection({ character }: Props) {
   const allBackgrounds = useBackgrounds()  ?? [];
 
   // Gather what each source grants
-  const classes = character.classes.map(ce => allClasses.find(c => c.id === ce.classId)).filter((c): c is NonNullable<typeof c> => !!c);
+  const classes = character.classes
+    .map(ce => allClasses.find(c => c.id === ce.classId))
+    .filter((c): c is GameClass => c != null);
   const bg       = allBackgrounds.find(b => b.id === character.backgroundId);
 
   // Currently set proficiencies on the character
@@ -77,14 +79,14 @@ export function ProficiencySection({ character }: Props) {
   // Fixed skills from background
   const bgSkills   = new Set(bg?.skillProficiencies ?? []);
   // Chooseable skills from classes
-  const classSkillPools = classes.map(cls => cls!.skillProficiencies);
+  const classSkillPools: { choose: number; from: SkillKey[] }[] = classes.map(cls => cls.skillProficiencies);
   // How many class-granted skills are currently chosen
   const classChosenCount = Array.from(skillProfs).filter(k => !bgSkills.has(k)).length;
   const maxClassSkills   = classSkillPools.reduce((s, p) => s + p.choose, 0);
   // ── Fixed prof lists from class ──────────────────────────────
-  const fixedArmor   = dedupe(classes.flatMap(c => c!.armorProficiencies));
-  const fixedWeapons = dedupe(classes.flatMap(c => c!.weaponProficiencies));
-  const fixedTools   = dedupe(classes.flatMap(c => c!.toolProficiencies));
+  const fixedArmor   = dedupe(classes.flatMap(c => c.armorProficiencies));
+  const fixedWeapons = dedupe(classes.flatMap(c => c.weaponProficiencies));
+  const fixedTools   = dedupe(classes.flatMap(c => c.toolProficiencies));
   const bgTools      = bg?.toolProficiencies ?? [];
 
   return (
@@ -100,7 +102,7 @@ export function ProficiencySection({ character }: Props) {
 
         {/* Background fixed skills */}
         {bgSkills.size > 0 && (
-          <FixedProfRow label={`${bg!.name} (fixed)`} items={Array.from(bgSkills).map(k => ALL_SKILLS.find(s => s.key === k)?.label ?? k)} />
+          <FixedProfRow label={`${bg!.name} (fixed)`} items={Array.from(bgSkills).map(k => (ALL_SKILLS.find(s => s.key === k)?.label ?? k) as string)} />
         )}
 
         {/* Class choose-N skills */}
@@ -124,7 +126,7 @@ export function ProficiencySection({ character }: Props) {
                   return (
                     <ProfChip
                       key={key}
-                      label={ALL_SKILLS.find(s => s.key === key)?.label ?? key}
+                      label={(ALL_SKILLS.find(s => s.key === key)?.label ?? key) as string}
                       active={chosen}
                       locked={isFixed}
                       disabled={atMax && !chosen}

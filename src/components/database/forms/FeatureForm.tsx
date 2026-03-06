@@ -44,6 +44,8 @@ export function FeatureForm({ initial, onSave, isSaving }: Props) {
     actionType:  initial?.actionType,
     cost:        initial?.cost        ?? '',
     tags:        initial?.tags        ?? [],
+    trigger:     initial?.trigger,
+    effect:      initial?.effect,
     sourceType:  initial?.sourceType,
     sourceId:    initial?.sourceId    ?? '',
     uses:        initial?.uses,
@@ -57,6 +59,8 @@ export function FeatureForm({ initial, onSave, isSaving }: Props) {
     if (!f.name.trim()) return alert('Feature name is required.');
     onSave({
       ...f,
+      trigger: f.trigger?.trim() || undefined,
+      effect: f.effect?.trim() || undefined,
       cost: f.cost?.trim() || undefined,
       sourceId: f.sourceId?.trim() || undefined,
       sourceType: f.sourceType || undefined,
@@ -79,6 +83,15 @@ export function FeatureForm({ initial, onSave, isSaving }: Props) {
         <LabeledInput label="Cost" value={f.cost ?? ''}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => patch({ cost: e.target.value })}
           placeholder="e.g. 1 EC, 1 use, free" />
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <LabeledInput label="Trigger (optional)" value={f.trigger ?? ''}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => patch({ trigger: e.target.value || undefined })}
+          placeholder="e.g. Long Rest, When hit, Reaction" />
+        <LabeledInput label="Effect (optional)" value={f.effect ?? ''}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => patch({ effect: e.target.value || undefined })}
+          placeholder="e.g. Gain Heroic Inspiration" />
       </div>
 
       <LabeledTextarea label="Description *" value={f.description} rows={5}
