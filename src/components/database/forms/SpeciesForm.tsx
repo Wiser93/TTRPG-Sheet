@@ -93,6 +93,26 @@ export function SpeciesForm({ initial, onSave, onCancel, isSaving }: SpeciesForm
           onChange={(features) => patch({ features })} />
       </FormSection>
 
+      <FormSection title="Proficiencies & Grants">
+        <ProfListInput label="Skill Proficiencies"
+          hint="Fixed skills this species grants (e.g. perception)"
+          value={(species.skillProficiencies ?? []).join(', ')}
+          onChange={v => patch({ skillProficiencies: v.split(',').map(s => s.trim()).filter(Boolean) as import('@/types/game').SkillKey[] })} />
+        <ProfListInput label="Armor Proficiencies"
+          value={(species.armorProficiencies ?? []).join(', ')}
+          onChange={v => patch({ armorProficiencies: v.split(',').map(s => s.trim()).filter(Boolean) })} />
+        <ProfListInput label="Weapon Proficiencies"
+          value={(species.weaponProficiencies ?? []).join(', ')}
+          onChange={v => patch({ weaponProficiencies: v.split(',').map(s => s.trim()).filter(Boolean) })} />
+        <ProfListInput label="Tool Proficiencies"
+          value={(species.toolProficiencies ?? []).join(', ')}
+          onChange={v => patch({ toolProficiencies: v.split(',').map(s => s.trim()).filter(Boolean) })} />
+        <LabeledInput label="Bonus Languages (number of free picks)"
+          type="number" min={0}
+          value={typeof species.languages === 'number' ? species.languages : 0}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => patch({ languages: Number(e.target.value) || undefined })} />
+      </FormSection>
+
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 8 }}>
         <button type="button" className="btn btn-ghost" onClick={onCancel}>Cancel</button>
         <button type="submit" className="btn btn-primary" disabled={isSaving || !species.name?.trim()}>
@@ -100,5 +120,24 @@ export function SpeciesForm({ initial, onSave, onCancel, isSaving }: SpeciesForm
         </button>
       </div>
     </form>
+  );
+}
+
+// ── Helper: proficiency list input with local string state ────
+function ProfListInput({ label, hint, value, onChange }: {
+  label: string; hint?: string; value: string; onChange: (v: string) => void;
+}) {
+  return (
+    <div>
+      <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>
+        {label}
+      </label>
+      <input
+        defaultValue={value}
+        onBlur={(e: React.FocusEvent<HTMLInputElement>) => onChange(e.target.value)}
+        placeholder="comma-separated, e.g. perception, stealth"
+      />
+      {hint && <p style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 3 }}>{hint}</p>}
+    </div>
   );
 }

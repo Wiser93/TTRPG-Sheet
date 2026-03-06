@@ -58,10 +58,10 @@ export interface ChoiceOption {
   label: string;
   description?: string;
   /**
-   * ID of a standalone DB Feature to grant when this option is selected.
-   * deriveStats will pull it into allFeatures automatically.
+   * IDs of standalone DB Features to grant when this option is selected.
+   * deriveStats will pull them into allFeatures automatically.
    */
-  featureId?: string;
+  featureIds?: string[];
   /** Nested choices unlocked by selecting this option */
   grants?: Choice[];
 }
@@ -179,6 +179,20 @@ export interface Species {
   extraSpeeds?: { type: string; value: number }[];
   darkvision?: number;           // range in feet, 0 = none
   features: Feature[];
+  /** Fixed skill proficiencies granted by this species */
+  skillProficiencies?: SkillKey[];
+  /** Fixed armor proficiencies (e.g. "light armor") */
+  armorProficiencies?: string[];
+  /** Fixed weapon proficiencies (e.g. "longsword") */
+  weaponProficiencies?: string[];
+  /** Fixed tool proficiencies */
+  toolProficiencies?: string[];
+  /** Languages granted (number of free picks, or list of fixed) */
+  languages?: number | string[];
+  /** DB Feat IDs granted automatically */
+  featIds?: string[];
+  /** DB Spell IDs granted as innate spells */
+  innateSpellIds?: string[];
   /** Choices made at character creation for this species */
   creationChoices?: Choice[];
   customFields?: Record<string, unknown>;

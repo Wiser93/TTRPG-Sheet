@@ -3,7 +3,7 @@
  *
  * Lets a game designer add/edit/remove Choice objects in a form.
  * Supports:
- *   - Static options with optional DB feature links (featureId)
+ *   - Static options with optional DB feature links (featureIds[])
  *   - DB-sourced options (items / spells / feats / features filtered by tag)
  *   - Nested grants — choices unlocked when a static option is selected
  */
@@ -235,7 +235,7 @@ function StaticOptionsEditor({ options, onChange, depth }: {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       {options.map(opt => {
         const isExpanded = expandedOptId === opt.id;
-        const hasFeature = !!opt.featureId;
+        const hasFeature = (opt.featureIds?.length ?? 0) > 0;
         const hasGrants  = (opt.grants?.length ?? 0) > 0;
         const badge = hasFeature && hasGrants ? '⚡+nested' : hasFeature ? '⚡ feat.' : hasGrants ? '⊕ nested' : null;
 
@@ -267,14 +267,14 @@ function StaticOptionsEditor({ options, onChange, depth }: {
 
             {isExpanded && (
               <div style={{ padding: '10px 10px 12px', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 14 }}>
-                {/* Feature link */}
+                {/* Feature links — multiple features can be granted */}
                 <div>
                   <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-2)', marginBottom: 6 }}>
-                    Linked Feature — granted automatically when this option is selected
+                    Linked Features — all granted automatically when this option is selected
                   </p>
-                  <FeatureIdPicker
-                    featureId={opt.featureId}
-                    onChange={featureId => update(opt.id, { featureId: featureId || undefined })}
+                  <FeatureIdListPicker
+                    featureIds={opt.featureIds ?? []}
+                    onChange={featureIds => update(opt.id, { featureIds: featureIds.length ? featureIds : undefined })}
                   />
                 </div>
 
@@ -301,76 +301,84 @@ function StaticOptionsEditor({ options, onChange, depth }: {
   );
 }
 
-// ── Feature ID picker ─────────────────────────────────────────
+// ── Feature ID list picker (supports multiple) ────────────────
 
-function FeatureIdPicker({ featureId, onChange }: {
-  featureId: string | undefined;
-  onChange: (id: string) => void;
+function FeatureIdListPicker({ featureIds, onChange }: {
+  featureIds: string[];
+  onChange: (ids: string[]) => void;
 }) {
   const allFeatures = useFeatures() ?? [];
   const [search, setSearch] = useState('');
-  const [changing, setChanging] = useState(false);
+  const [adding, setAdding] = useState(false);
 
-  const current = allFeatures.find(f => f.id === featureId);
+  const linked = allFeatures.filter(f => featureIds.includes(f.id));
   const filtered = allFeatures.filter(f =>
-    f.name.toLowerCase().includes(search.toLowerCase()) ||
-    (f.tags ?? []).some(t => t.toLowerCase().includes(search.toLowerCase()))
+    !featureIds.includes(f.id) &&
+    (f.name.toLowerCase().includes(search.toLowerCase()) ||
+     (f.tags ?? []).some(t => t.toLowerCase().includes(search.toLowerCase())))
   );
 
-  if (current && !changing) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', background: 'color-mix(in srgb, var(--accent) 10%, var(--bg-2))', borderRadius: 6, border: '1px solid color-mix(in srgb, var(--accent) 30%, var(--border))' }}>
-        <span style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>
-          ⚡ {current.name}
-          {current.actionType && <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--accent)', fontWeight: 400 }}>({current.actionType.replace('_', ' ')})</span>}
-          {current.cost && <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--text-2)' }}>{current.cost}</span>}
-        </span>
-        <button type="button" className="btn btn-ghost" style={{ fontSize: 11 }} onClick={() => setChanging(true)}>Change</button>
-        <button type="button" style={{ color: 'var(--accent-2)', fontSize: 16, lineHeight: 1 }} onClick={() => onChange('')}>×</button>
-      </div>
-    );
-  }
-
   return (
-    <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
-      <input
-        value={search}
-        autoFocus
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
-        placeholder="Search features by name or tag…"
-        style={{ width: '100%', borderRadius: 0, margin: 0, borderLeft: 'none', borderRight: 'none', borderTop: 'none' }}
-      />
-      <div style={{ maxHeight: 180, overflowY: 'auto' }}>
-        {allFeatures.length === 0 ? (
-          <p style={{ padding: '10px 12px', fontSize: 12, color: 'var(--text-2)' }}>
-            No features in database yet — create them in Game Database → Features ⚡
-          </p>
-        ) : filtered.length === 0 ? (
-          <p style={{ padding: '10px 12px', fontSize: 12, color: 'var(--text-2)' }}>No results for "{search}".</p>
-        ) : filtered.map(f => (
-          <button key={f.id} type="button"
-            onClick={() => { onChange(f.id); setChanging(false); setSearch(''); }}
-            style={{ width: '100%', textAlign: 'left', padding: '7px 12px', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <span style={{ fontWeight: 600, fontSize: 13 }}>
-              {f.name}
-              {f.actionType && <span style={{ marginLeft: 6, fontSize: 10, color: 'var(--accent)' }}>{f.actionType.replace('_', ' ')}</span>}
-              {f.cost && <span style={{ marginLeft: 6, fontSize: 10, color: 'var(--text-2)' }}>{f.cost}</span>}
-            </span>
-            {f.description && (
-              <span style={{ fontSize: 11, color: 'var(--text-2)' }}>
-                {f.description.slice(0, 90)}{f.description.length > 90 ? '…' : ''}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
-      {(current || changing) && (
-        <div style={{ padding: 6, borderTop: '1px solid var(--border)' }}>
-          <button type="button" className="btn btn-ghost" style={{ fontSize: 11 }}
-            onClick={() => { setChanging(false); setSearch(''); }}>
-            Cancel
-          </button>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {/* Linked features list */}
+      {linked.map(f => (
+        <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: 'color-mix(in srgb, var(--accent) 10%, var(--bg-2))', borderRadius: 6, border: '1px solid color-mix(in srgb, var(--accent) 30%, var(--border))' }}>
+          <span style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>
+            ⚡ {f.name}
+            {f.actionType && <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--accent)', fontWeight: 400 }}>({f.actionType.replace('_', ' ')})</span>}
+            {f.cost && <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--text-2)' }}>{f.cost}</span>}
+          </span>
+          <button type="button" style={{ color: 'var(--accent-2)', fontSize: 16, lineHeight: 1 }}
+            onClick={() => onChange(featureIds.filter(id => id !== f.id))}>×</button>
         </div>
+      ))}
+
+      {/* Add another feature */}
+      {adding ? (
+        <div style={{ border: '1px solid var(--accent)', borderRadius: 6, overflow: 'hidden' }}>
+          <input
+            value={search}
+            autoFocus
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
+            placeholder="Search features by name or tag…"
+            style={{ width: '100%', borderRadius: 0, margin: 0, borderLeft: 'none', borderRight: 'none', borderTop: 'none' }}
+          />
+          <div style={{ maxHeight: 180, overflowY: 'auto' }}>
+            {allFeatures.length === 0 ? (
+              <p style={{ padding: '10px 12px', fontSize: 12, color: 'var(--text-2)' }}>
+                No features yet — create them in Game Database → Features ⚡
+              </p>
+            ) : filtered.length === 0 ? (
+              <p style={{ padding: '10px 12px', fontSize: 12, color: 'var(--text-2)' }}>
+                {search ? `No results for "${search}".` : 'All features already linked.'}
+              </p>
+            ) : filtered.map(f => (
+              <button key={f.id} type="button"
+                onClick={() => { onChange([...featureIds, f.id]); setSearch(''); setAdding(false); }}
+                style={{ width: '100%', textAlign: 'left', padding: '7px 12px', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <span style={{ fontWeight: 600, fontSize: 13 }}>
+                  {f.name}
+                  {f.actionType && <span style={{ marginLeft: 6, fontSize: 10, color: 'var(--accent)' }}>{f.actionType.replace('_', ' ')}</span>}
+                  {f.cost && <span style={{ marginLeft: 6, fontSize: 10, color: 'var(--text-2)' }}>{f.cost}</span>}
+                </span>
+                {f.description && (
+                  <span style={{ fontSize: 11, color: 'var(--text-2)' }}>
+                    {f.description.slice(0, 90)}{f.description.length > 90 ? '…' : ''}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+          <div style={{ padding: 6, borderTop: '1px solid var(--border)' }}>
+            <button type="button" className="btn btn-ghost" style={{ fontSize: 11 }}
+              onClick={() => { setAdding(false); setSearch(''); }}>Cancel</button>
+          </div>
+        </div>
+      ) : (
+        <button type="button" className="btn btn-ghost" style={{ fontSize: 12, alignSelf: 'flex-start' }}
+          onClick={() => setAdding(true)}>
+          + Link feature
+        </button>
       )}
     </div>
   );

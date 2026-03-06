@@ -191,9 +191,10 @@ function InventoryRow({ entry, equipped, onRemove, onQtyChange }: {
     [{ slot: 'custom' as EquipSlot, label: 'Equip' }];
 
   return (
-    <div style={{ border:'1px solid var(--border)', borderRadius:6, overflow:'hidden',
+    <div style={{ border:'1px solid var(--border)', borderRadius:6, overflow:'visible',
       background: isEquipped ? 'color-mix(in srgb, var(--accent) 8%, var(--bg-2))' : 'var(--bg-2)',
       borderColor: isEquipped ? 'var(--accent)' : 'var(--border)',
+      position: 'relative',
     }}>
       <div style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 10px' }}>
         {/* Equip toggle */}
@@ -251,7 +252,7 @@ function InventoryRow({ entry, equipped, onRemove, onQtyChange }: {
       </div>
 
       {expanded && item && (
-        <div style={{ padding:'4px 10px 10px', borderTop:'1px solid var(--border)' }}>
+        <div style={{ padding:'4px 10px 10px', borderTop:'1px solid var(--border)', borderRadius:'0 0 6px 6px', overflow:'hidden' }}>
           {item.description && <p style={{ fontSize:12, color:'var(--text-2)', marginBottom:6, lineHeight:1.5 }}>{item.description}</p>}
           {item.weaponStats && (
             <p style={{ fontSize:12, color:'var(--text-1)' }}>

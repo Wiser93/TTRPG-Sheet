@@ -35,6 +35,9 @@ interface Props {
 }
 
 export function FeatureForm({ initial, onSave, isSaving }: Props) {
+  // Local string for tags so user can type commas without them being eaten
+  const [tagsText, setTagsText] = useState((initial?.tags ?? []).join(', '));
+
   const [f, setF] = useState<Omit<Feature, 'id'>>({
     name:        initial?.name        ?? '',
     description: initial?.description ?? '',
@@ -123,11 +126,21 @@ export function FeatureForm({ initial, onSave, isSaving }: Props) {
           placeholder="e.g. elemental-shaper" />
       </div>
 
-      {/* Tags */}
-      <LabeledInput label="Tags (comma-separated)" value={(f.tags ?? []).join(', ')}
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-          patch({ tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })}
-        placeholder="e.g. water, reaction, elemental, combat" />
+      {/* Tags — use local string so commas can be typed; flush to array on blur */}
+      <div>
+        <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>
+          Tags (comma-separated)
+        </label>
+        <input
+          value={tagsText}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTagsText(e.target.value)}
+          onBlur={() => patch({ tags: tagsText.split(',').map(t => t.trim()).filter(Boolean) })}
+          placeholder="e.g. water, reaction, elemental, combat"
+        />
+        <p style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 3 }}>
+          Press Tab or click away to apply. Current: {f.tags?.length ? f.tags.join(', ') : '(none)'}
+        </p>
+      </div>
 
       <button className="btn btn-primary" onClick={handleSave} disabled={isSaving}
         style={{ marginTop: 4 }}>

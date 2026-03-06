@@ -32,7 +32,7 @@ export function ProficiencySection({ character }: Props) {
   const allBackgrounds = useBackgrounds()  ?? [];
 
   // Gather what each source grants
-  const classes = character.classes.map(ce => allClasses.find(c => c.id === ce.classId)).filter(Boolean);
+  const classes = character.classes.map(ce => allClasses.find(c => c.id === ce.classId)).filter((c): c is import('@/types/game').GameClass => !!c);
   const bg       = allBackgrounds.find(b => b.id === character.backgroundId);
 
   // Currently set proficiencies on the character
@@ -128,7 +128,7 @@ export function ProficiencySection({ character }: Props) {
                       active={chosen}
                       locked={isFixed}
                       disabled={atMax && !chosen}
-                      onClick={() => !isFixed && toggleSkill(key)}
+                      onClick={() => { if (!isFixed) toggleSkill(key); }}
                     />
                   );
                 })}
@@ -149,7 +149,7 @@ export function ProficiencySection({ character }: Props) {
                 label={label}
                 active={skillProfs.has(key)}
                 locked={bgSkills.has(key)}
-                onClick={() => !bgSkills.has(key) && toggleSkill(key)}
+                onClick={() => { if (!bgSkills.has(key)) toggleSkill(key); }}
               />
             ))}
           </div>

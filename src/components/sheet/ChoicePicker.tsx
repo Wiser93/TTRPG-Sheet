@@ -127,7 +127,7 @@ function StaticChoicePicker({ choice, resolved, allResolved, onChange, onNestedC
         {options.map(opt => {
           const isSelected  = selected.includes(opt.id);
           const isDisabled  = !isSelected && selected.length >= choice.count;
-          const hasFeature  = !!opt.featureId;
+          const hasFeature  = (opt.featureIds?.length ?? 0) > 0;
           const hasNested   = (opt.grants?.length ?? 0) > 0;
           return (
             <OptionRow
@@ -222,7 +222,7 @@ function OptionRow({ opt, isSelected, isDisabled, isRadio, hasFeature, hasNested
   isSelected: boolean;
   isDisabled: boolean;
   isRadio: boolean;
-  hasFeature: boolean;
+  hasFeature: boolean;  // has any featureIds linked
   hasNested: boolean;
   onClick: () => void;
 }) {

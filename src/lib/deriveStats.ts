@@ -139,10 +139,10 @@ export function deriveStats(character: Character, gameData: GameData): DerivedSt
       if (!match || match.selectedValues.length === 0) continue;
 
       for (const selectedId of match.selectedValues) {
-        // Static options with featureId
+        // Static options with featureIds (one option can grant multiple features)
         const opt = (choice.options ?? []).find(o => o.id === selectedId);
-        if (opt?.featureId) {
-          const dbFeat = gameData.features?.find(f => f.id === opt.featureId);
+        for (const fid of (opt?.featureIds ?? [])) {
+          const dbFeat = gameData.features?.find(f => f.id === fid);
           if (dbFeat && !allFeatures.some(f => f.id === dbFeat.id)) {
             allFeatures.push(dbFeat);
             allModifiers.push(...(dbFeat.modifiers ?? []));
@@ -228,6 +228,16 @@ export function deriveStats(character: Character, gameData: GameData): DerivedSt
     }
   }
 
+  // Apply species fixed proficiencies
+  if (character.speciesId) {
+    const sp = gameData.species.find(s => s.id === character.speciesId);
+    if (sp) {
+      extraArmorProfs.push(...(sp.armorProficiencies ?? []));
+      extraWeaponProfs.push(...(sp.weaponProficiencies ?? []));
+      extraToolProfs.push(...(sp.toolProficiencies ?? []));
+    }
+  }
+
   let ac = character.combat.baseAC ?? (10 + statMods.dexterity);
   for (const mod of allModifiers) {
     if (mod.target.kind !== 'ac') continue;
@@ -235,13 +245,23 @@ export function deriveStats(character: Character, gameData: GameData): DerivedSt
   }
 
   // ── Skills ───────────────────────────────────────────────
+  // Collect fixed skill proficiencies from background and species
+  const bgSkillProfs = new Set<SkillKey>(
+    gameData.backgrounds.find(b => b.id === character.backgroundId)?.skillProficiencies ?? []
+  );
+  const speciesSkillProfs = new Set<SkillKey>(
+    gameData.species.find(s => s.id === character.speciesId)?.skillProficiencies ?? []
+  );
+
   const skills = Object.fromEntries(
     (Object.keys(SKILL_STAT) as SkillKey[]).map(skill => {
       const state = character.skills[skill];
       const base = statMods[SKILL_STAT[skill]];
-      const profMult = state.expertise ? 2 : state.proficient ? 1 : 0;
+      // Proficient if stored on character OR granted by background/species
+      const isProficient = state.proficient || bgSkillProfs.has(skill) || speciesSkillProfs.has(skill);
+      const profMult = state.expertise ? 2 : isProficient ? 1 : 0;
       const bonus = base + profMult * profBonus + state.extraBonus;
-      return [skill, { bonus, proficient: state.proficient, expert: state.expertise }];
+      return [skill, { bonus, proficient: isProficient, expert: state.expertise }];
     })
   ) as Record<SkillKey, { bonus: number; proficient: boolean; expert: boolean }>;
 
