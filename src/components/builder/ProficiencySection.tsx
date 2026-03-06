@@ -1,5 +1,5 @@
 import { useCharacterStore } from '@/store/characterStore';
-import { useAllSpecies, useBackgrounds, useClasses } from '@/hooks/useGameDatabase';
+import { useBackgrounds, useClasses } from '@/hooks/useGameDatabase';
 import type { Character } from '@/types/character';
 import type { SkillKey } from '@/types/game';
 
@@ -29,7 +29,6 @@ interface Props { character: Character }
 export function ProficiencySection({ character }: Props) {
   const { patchCharacter } = useCharacterStore();
   const allClasses     = useClasses()      ?? [];
-  const allSpecies     = useAllSpecies()   ?? [];
   const allBackgrounds = useBackgrounds()  ?? [];
 
   // Gather what each source grants
