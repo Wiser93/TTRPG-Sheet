@@ -69,13 +69,9 @@ export function ChoicePicker({ choice, resolved, allResolved, onChange, onNested
 
 // ── Static picker ─────────────────────────────────────────────
 
-interface StaticProps extends Props {
-  choice: Choice & { options: ChoiceOption[] };
-}
-
-function StaticChoicePicker({ choice, resolved, allResolved, onChange, onNestedChange, readOnly, context }: StaticProps) {
+function StaticChoicePicker({ choice, resolved, allResolved, onChange, onNestedChange, readOnly, context }: Props) {
   const selected = resolved?.selectedValues ?? [];
-  const options  = choice.options;
+  const options  = choice.options ?? [];
 
   function toggle(optionId: string) {
     if (readOnly) return;
