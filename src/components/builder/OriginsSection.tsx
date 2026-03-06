@@ -48,8 +48,10 @@ export function OriginsSection({ character }: Props) {
                 key={choice.id}
                 choice={choice}
                 resolved={character.speciesChoices.find(r => r.choiceId === choice.id)}
+                allResolved={character.speciesChoices}
                 context={{ sourceType: 'species', sourceId: activeSpecies.id }}
                 onChange={r => resolveBuilderChoice(r, 'species')}
+                onNestedChange={r => resolveBuilderChoice(r, 'species')}
               />
             ))}
           </div>
@@ -88,8 +90,10 @@ export function OriginsSection({ character }: Props) {
                 key={choice.id}
                 choice={choice}
                 resolved={character.backgroundChoices.find(r => r.choiceId === choice.id)}
+                allResolved={character.backgroundChoices}
                 context={{ sourceType: 'background', sourceId: activeBackground.id }}
                 onChange={r => resolveBuilderChoice(r, 'background')}
+                onNestedChange={r => resolveBuilderChoice(r, 'background')}
               />
             ))}
           </div>

@@ -223,8 +223,10 @@ function LevelBlock({ label, levelNum, cls, entry, character, features, choices,
               key={choice.id}
               choice={choice}
               resolved={entry.choices.find(r => r.choiceId === choice.id && r.level === levelNum)}
+              allResolved={entry.choices}
               context={{ sourceType: 'class', sourceId: cls.id, level: levelNum }}
               onChange={r => resolveBuilderChoice(r, 'class')}
+              onNestedChange={r => resolveBuilderChoice(r, 'class')}
             />
           ))}
         </div>

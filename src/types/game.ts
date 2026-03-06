@@ -57,6 +57,11 @@ export interface ChoiceOption {
   id: string;
   label: string;
   description?: string;
+  /**
+   * ID of a standalone DB Feature to grant when this option is selected.
+   * deriveStats will pull it into allFeatures automatically.
+   */
+  featureId?: string;
   /** Nested choices unlocked by selecting this option */
   grants?: Choice[];
 }
@@ -74,7 +79,7 @@ export interface ChoiceOption {
  * The selected ids are stored in ResolvedChoice.selectedValues as usual.
  */
 export interface ChoiceDbSource {
-  entity: 'items' | 'spells' | 'feats';
+  entity: 'items' | 'spells' | 'feats' | 'features';
   /** Only include records whose tags array contains this value */
   filterTag?: string;
   /** Only include items whose category matches (items only) */

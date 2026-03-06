@@ -127,7 +127,75 @@ export function deriveStats(character: Character, gameData: GameData): DerivedSt
   // ── AC ───────────────────────────────────────────────────
   // Base: 10 + DEX unless armor equipped (simplified — UI layer handles equipped armor)
   // ── DB-sourced choice proficiencies ─────────────────────
-  // Merge any weapon/armor/tool proficiencies granted by resolved choices
+  // ── Resolve features granted by choice selections ────────
+  // Walk every resolved choice and check its selected option(s) for featureId links.
+  // Also handles DB-sourced 'features' entity choices.
+  function resolveGrantedFeatures(
+    choices: import('@/types/game').Choice[],
+    resolved: import('@/types/character').ResolvedChoice[]
+  ) {
+    for (const choice of choices) {
+      const match = resolved.find(r => r.choiceId === choice.id);
+      if (!match || match.selectedValues.length === 0) continue;
+
+      for (const selectedId of match.selectedValues) {
+        // Static options with featureId
+        const opt = (choice.options ?? []).find(o => o.id === selectedId);
+        if (opt?.featureId) {
+          const dbFeat = gameData.features?.find(f => f.id === opt.featureId);
+          if (dbFeat && !allFeatures.some(f => f.id === dbFeat.id)) {
+            allFeatures.push(dbFeat);
+            allModifiers.push(...(dbFeat.modifiers ?? []));
+          }
+        }
+
+        // DB-sourced 'features' entity — selectedId IS the feature id
+        if (choice.dbSource?.entity === 'features') {
+          const dbFeat = gameData.features?.find(f => f.id === selectedId);
+          if (dbFeat && !allFeatures.some(f => f.id === dbFeat.id)) {
+            allFeatures.push(dbFeat);
+            allModifiers.push(...(dbFeat.modifiers ?? []));
+          }
+        }
+
+        // Recurse into nested grants
+        if (opt?.grants?.length) {
+          resolveGrantedFeatures(opt.grants, resolved);
+        }
+      }
+    }
+  }
+
+  // Run for every class (creation choices + per-level choices)
+  for (const charClass of character.classes) {
+    const cls = gameData.classes.find(c => c.id === charClass.classId);
+    if (!cls) continue;
+    resolveGrantedFeatures(cls.creationChoices ?? [], charClass.choices);
+    for (const levelEntry of cls.levelEntries) {
+      if (levelEntry.level > charClass.level) break;
+      resolveGrantedFeatures(levelEntry.choices ?? [], charClass.choices);
+    }
+    if (charClass.subclassId) {
+      const sub = gameData.subclasses.find(s => s.id === charClass.subclassId);
+      if (sub) {
+        for (const levelEntry of sub.levelEntries) {
+          if (levelEntry.level > charClass.level) break;
+          resolveGrantedFeatures(levelEntry.choices ?? [], charClass.choices);
+        }
+      }
+    }
+  }
+  // Also species and background choices
+  resolveGrantedFeatures(
+    gameData.species.find(s => s.id === character.speciesId)?.creationChoices ?? [],
+    character.speciesChoices
+  );
+  resolveGrantedFeatures(
+    gameData.backgrounds.find(b => b.id === character.backgroundId)?.creationChoices ?? [],
+    character.backgroundChoices
+  );
+
+  // ── Merge any weapon/armor/tool proficiencies granted by resolved choices
   // (including DB-sourced picks like "1 martial weapon of your choice")
   const extraWeaponProfs: string[] = [];
   const extraArmorProfs: string[] = [];

@@ -107,9 +107,22 @@ export function useDbSourceOptions(source: import('@/types/game').ChoiceDbSource
         .map(i => ({ id: i.id, name: i.name, description: i.description }));
     }
     if (entity === 'feats') {
-      // DBFeat (Feat & DBRecord) has no tags field — tag filter is ignored for feats
       const all = await live(db.feats).sortBy('name');
       return all.map(i => ({ id: i.id, name: i.name, description: i.description }));
+    }
+    if (entity === 'features') {
+      const all = await live(db.features).sortBy('name');
+      return all
+        .filter(f => !tag || (f.tags ?? []).includes(tag))
+        .map(f => ({
+          id: f.id,
+          name: f.name,
+          description: [
+            f.actionType ? f.actionType.replace('_', ' ') : '',
+            f.cost ?? '',
+            f.description,
+          ].filter(Boolean).join(' · '),
+        }));
     }
     return [];
   }, [entity, tag, category]);
