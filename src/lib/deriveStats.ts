@@ -242,6 +242,7 @@ export function deriveStats(character: Character, gameData: GameData): DerivedSt
   const extraWeaponProfs: string[] = [];
   const extraArmorProfs: string[] = [];
   const extraToolProfs: string[] = [];
+  const extraLanguages: string[] = [];
 
   const extraSkillProfs: SkillKey[] = [];
 
@@ -254,6 +255,13 @@ export function deriveStats(character: Character, gameData: GameData): DerivedSt
       if (choice.type === 'skill_proficiency') {
         for (const val of match.selectedValues) {
           extraSkillProfs.push(val as SkillKey);
+        }
+      }
+
+      // language type — selectedValues are language name strings
+      if (choice.type === 'language') {
+        for (const val of match.selectedValues) {
+          if (!extraLanguages.includes(val)) extraLanguages.push(val);
         }
       }
 
@@ -445,6 +453,7 @@ export function deriveStats(character: Character, gameData: GameData): DerivedSt
     spellSaveDC,
     allResources,
     resourceMaxes,
+    extraLanguages,
     extraWeaponProfs,
     extraArmorProfs,
     extraToolProfs,
@@ -537,3 +546,4 @@ export function deriveResourceMaxes(
   }
   return result;
 }
+

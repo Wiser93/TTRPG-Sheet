@@ -82,7 +82,7 @@ interface CharacterStore {
   setBaseStat: (stat: import('@/types/game').StatKey, value: number) => void;
 
   // ── Elemental Embodiment ──────────────────────────────────
-  setElementalEmbodiment: (element: Character['elementalEmbodiment']) => void;
+  setFeatureCardState: (featureId: string, value: string | null) => void;
 
   // ── Sync derived resource maxes back to stored max ─────────
   syncResourceMaxes: (resourceMaxes: Record<string, number>) => void;
@@ -289,7 +289,7 @@ export const useCharacterStore = create<CharacterStore>()(
         .filter(r => r.rechargeOn === 'short_rest' || r.rechargeOn === 'long_rest')
         .forEach(r => { r.current = r.max; });
       // Clear rest-duration embodiment
-      c.elementalEmbodiment = null;
+      c.featureCardStates = {};
     }),
 
     // ── Inspiration ──────────────────────────────────────────
@@ -376,8 +376,9 @@ export const useCharacterStore = create<CharacterStore>()(
     }),
 
     // ── Elemental Embodiment ─────────────────────────────────
-    setElementalEmbodiment: (element) => mutate(set, get, c => {
-      c.elementalEmbodiment = element;
+    setFeatureCardState: (featureId, value) => mutate(set, get, c => {
+      if (!c.featureCardStates) c.featureCardStates = {};
+      c.featureCardStates[featureId] = value;
     }),
 
     // ── Sync resource maxes from derived stats ────────────────

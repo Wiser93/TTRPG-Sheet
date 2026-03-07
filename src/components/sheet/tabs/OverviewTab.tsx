@@ -1,7 +1,8 @@
 import { useCharacterStore } from '@/store/characterStore';
 import { useBackgrounds, useAllSpecies } from '@/hooks/useGameDatabase';
+import { useFeatureCardOptions } from '@/hooks/useFeatureCardOptions';
 import type { Character, DerivedStats } from '@/types/character';
-import type { StatKey, SkillKey } from '@/types/game';
+import type { StatKey, SkillKey, Feature } from '@/types/game';
 
 const STAT_LABELS: Record<StatKey, string> = {
   strength:     'STR',
@@ -38,15 +39,18 @@ function sign(n: number) { return n >= 0 ? `+${n}` : `${n}`; }
 interface Props { character: Character; derived: DerivedStats; }
 
 export function OverviewTab({ character, derived }: Props) {
-  const { setCurrentHP, shortRest, longRest } = useCharacterStore();
+  const { setCurrentHP, shortRest, longRest, setFeatureCardState } = useCharacterStore();
   const allSpecies    = useAllSpecies()   ?? [];
   const allBackgrounds = useBackgrounds() ?? [];
   const species    = allSpecies.find(s => s.id === character.speciesId);
   const background = allBackgrounds.find(b => b.id === character.backgroundId);
 
-  // Collect all languages
+  // Collect all languages — fixed from species, chosen manually, and from class/bg choices
   const fixedLangs = new Set<string>(['Common', ...((Array.isArray(species?.languages) ? species.languages : []) as string[])]);
-  const allLangs = Array.from(new Set([...Array.from(fixedLangs), ...character.languages]));
+  const allLangs = Array.from(new Set([...Array.from(fixedLangs), ...character.languages, ...derived.extraLanguages]));
+
+  // Card features for the overview tab
+  const overviewCards = derived.allFeatures.filter(f => f.isCard && f.cardTab === 'overview');
 
   // Collect all tool proficiencies
   const allTools = Array.from(new Set([
@@ -186,6 +190,16 @@ export function OverviewTab({ character, derived }: Props) {
         </div>
       </div>
 
+      {/* Overview feature cards */}
+      {overviewCards.map(f => (
+        <OverviewFeatureCard
+          key={f.id}
+          feature={f}
+          activeValue={(character.featureCardStates ?? {})[f.id] ?? null}
+          onChange={val => setFeatureCardState(f.id, val)}
+        />
+      ))}
+
       {/* Languages & Tool Proficiencies */}
       <div className="card">
         <div style={{ display: 'grid', gridTemplateColumns: allTools.length ? '1fr 1fr' : '1fr', gap: 16 }}>
@@ -231,6 +245,51 @@ export function OverviewTab({ character, derived }: Props) {
         </div>
       </div>
 
+    </div>
+  );
+}
+
+function OverviewFeatureCard({ feature, activeValue, onChange }: {
+  feature: Feature;
+  activeValue: string | null;
+  onChange: (val: string | null) => void;
+}) {
+  const options = useFeatureCardOptions(feature);
+  if (options.length === 0) return null;
+  const activeOpt = options.find(o => o.id === activeValue);
+  return (
+    <div className="card">
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
+        <p className="label">{feature.name}</p>
+        {activeValue && (
+          <button onClick={() => onChange(null)} style={{ fontSize: 11, color: 'var(--text-2)', padding: '2px 6px' }}>Clear</button>
+        )}
+      </div>
+      {feature.cardSelectionLabel && (
+        <p style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 10 }}>{feature.cardSelectionLabel}</p>
+      )}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {options.map(opt => {
+          const active = activeValue === opt.id;
+          const color = opt.color ?? 'var(--accent)';
+          return (
+            <button key={opt.id} onClick={() => onChange(active ? null : opt.id)} style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '6px 14px', borderRadius: 20, fontSize: 13, fontWeight: 600,
+              background: active ? color : 'var(--bg-2)',
+              color: active ? '#fff' : 'var(--text-1)',
+              border: `2px solid ${active ? color : 'var(--border)'}`,
+              transition: 'all 150ms ease',
+            }}>
+              {opt.icon && <span>{opt.icon}</span>}
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+      {activeOpt?.description && (
+        <p style={{ fontSize: 12, marginTop: 10, color: activeOpt.color ?? 'var(--accent)' }}>{activeOpt.description}</p>
+      )}
     </div>
   );
 }

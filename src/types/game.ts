@@ -57,6 +57,10 @@ export interface ChoiceOption {
   id: string;
   label: string;
   description?: string;
+  /** Accent color for this option (e.g. '#61afef') — used by card panels */
+  color?: string;
+  /** Emoji or short icon string for this option — used by card panels */
+  icon?: string;
   /**
    * IDs of standalone DB Features to grant when this option is selected.
    * deriveStats will pull them into allFeatures automatically.
@@ -176,6 +180,38 @@ export interface Feature {
    * Used for display/filtering — e.g. a technique that costs Elemental Charges.
    */
   requiresResourceIds?: string[];
+
+  // ── Feature card ───────────────────────────────────────────
+  /**
+   * If true, this feature renders as an interactive card on the character sheet.
+   * Card features appear ABOVE action groups on the relevant tab.
+   */
+  isCard?: boolean;
+  /** Which sheet tab the card appears on. Defaults to 'combat'. */
+  cardTab?: 'combat' | 'overview';
+  /**
+   * Text shown above the option buttons on the card.
+   * e.g. "Choose an element to embody at the start of a rest."
+   */
+  cardSelectionLabel?: string;
+  /**
+   * Dynamically populate card options from the values the player has selected
+   * in any choice with this ID. The option display is taken from the choice's
+   * option definitions (label, description, color, icon).
+   * e.g. { choiceId: 'elemental_path' } → shows whichever elements have been chosen.
+   */
+  cardOptionSource?: { choiceId: string };
+  /**
+   * Static card options (used when options don't come from a choice).
+   * Each option has an id, label, optional description, color, icon.
+   */
+  cardOptions?: Array<{
+    id: string;
+    label: string;
+    description?: string;
+    color?: string;
+    icon?: string;
+  }>;
 }
 
 // ============================================================

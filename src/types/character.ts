@@ -286,10 +286,10 @@ export interface Character {
   customFields?: Record<string, unknown>;
 
   /**
-   * Elemental Shaper: which element the character is currently embodying.
-   * Set at the start of a rest. Null = none chosen yet.
+   * Persisted selection state for isCard features, keyed by feature id.
+   * e.g. { 'elemental-embodiment': 'water', 'elemental-resonance': null }
    */
-  elementalEmbodiment?: 'water' | 'earth' | 'fire' | 'air' | null;
+  featureCardStates: Record<string, string | null>;
 }
 
 // ============================================================
@@ -318,6 +318,8 @@ export interface DerivedStats {
   allResources: ResourceState[];
   /** Resolved max for each resource with a maxFormula, keyed by resource id */
   resourceMaxes: Record<string, number>;
+  /** Language names collected from all sources (class/species/bg choices) */
+  extraLanguages: string[];
   /** Weapon proficiency ids/names granted by DB-sourced choice picks */
   extraWeaponProfs: string[];
   extraArmorProfs: string[];

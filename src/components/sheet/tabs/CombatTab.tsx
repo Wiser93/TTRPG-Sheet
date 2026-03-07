@@ -1,19 +1,13 @@
 import { useState } from 'react';
 import { useCharacterStore } from '@/store/characterStore';
-
-function slugify(name: string) {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-}
+import { useFeatureCardOptions } from '@/hooks/useFeatureCardOptions';
 import { useItems } from '@/hooks/useGameDatabase';
 import type { Character, DerivedStats, ResourceState } from '@/types/character';
 import type { Feature, ActionType } from '@/types/game';
 
-// ── Constants ─────────────────────────────────────────────────
-
-const ELEMENT_ICONS: Record<string, string> = { water: '💧', earth: '🪨', fire: '🔥', air: '💨' };
-const ELEMENT_COLORS: Record<string, string> = {
-  water: '#61afef', earth: '#e5c07b', fire: '#e06c75', air: '#98c379',
-};
+function slugify(name: string) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
 
 const ACTION_GROUPS: { type: ActionType; label: string; color: string }[] = [
   { type: 'action',       label: 'Actions',       color: '#e06c75' },
@@ -29,23 +23,22 @@ interface Props { character: Character; derived: DerivedStats }
 export function CombatTab({ character, derived }: Props) {
   const {
     addDeathSave, resetDeathSaves,
-    addCondition, removeCondition, setElementalEmbodiment,
+    addCondition, removeCondition,
+    setFeatureCardState,
   } = useCharacterStore();
 
-  const knownElements = getKnownElements(character);
-  const hasElementalEmbodiment = knownElements.length > 0;
-
-  // Resources from derived (synthetic from isResource features + manual)
-  // combatResource:true features get their own prominent panel (like EC)
-  // others appear in the secondary Resources section
+  // Resources split by combatResource flag
   const combatResources = derived.allResources.filter(r => {
     const feat = derived.allFeatures.find(f => (f.resourceId ?? slugify(f.name)) === r.id);
     return feat?.combatResource ?? r.id === 'elemental-charges';
   });
-  const otherResources = derived.allResources.filter(r => !combatResources.some(c => c.id === r.id));
+  const otherResources = derived.allResources.filter(r => !combatResources.some(cr => cr.id === r.id));
 
-  // Features grouped by action type
-  const featuresWithAction = derived.allFeatures.filter(f => f.actionType);
+  // Card features for combat tab
+  const combatCards = derived.allFeatures.filter(f => f.isCard && (f.cardTab ?? 'combat') === 'combat');
+
+  // Features grouped by action type (exclude card features — they get their own panel)
+  const featuresWithAction = derived.allFeatures.filter(f => f.actionType && !f.isCard);
   const hasActions = featuresWithAction.length > 0;
 
   return (
@@ -75,47 +68,15 @@ export function CombatTab({ character, derived }: Props) {
       {/* ── Weapon Attacks ────────────────────────────────── */}
       <AttacksPanel character={character} derived={derived} />
 
-      {/* ── Elemental Embodiment ───────────────────────────── */}
-      {hasElementalEmbodiment && (
-        <div className="card">
-          <p className="label" style={{ marginBottom: 8 }}>Elemental Embodiment</p>
-          <p style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 10 }}>
-            Choose an element to embody at the start of a rest.
-          </p>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {knownElements.map(element => {
-              const active = character.elementalEmbodiment === element;
-              const color = ELEMENT_COLORS[element];
-              return (
-                <button key={element}
-                  onClick={() => setElementalEmbodiment(active ? null : element as Character['elementalEmbodiment'])}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 6,
-                    padding: '6px 14px', borderRadius: 20, fontSize: 13, fontWeight: 600,
-                    background: active ? color : 'var(--bg-2)',
-                    color: active ? '#fff' : 'var(--text-1)',
-                    border: `2px solid ${active ? color : 'var(--border)'}`,
-                    transition: 'all 150ms ease',
-                  }}
-                >
-                  {ELEMENT_ICONS[element]} {element.charAt(0).toUpperCase() + element.slice(1)}
-                </button>
-              );
-            })}
-            {character.elementalEmbodiment && (
-              <button onClick={() => setElementalEmbodiment(null)}
-                style={{ fontSize: 12, color: 'var(--text-2)', padding: '6px 10px' }}>
-                Clear
-              </button>
-            )}
-          </div>
-          {character.elementalEmbodiment && (
-            <p style={{ fontSize: 12, marginTop: 10, color: ELEMENT_COLORS[character.elementalEmbodiment] }}>
-              {getEmbodimentBonus(character.elementalEmbodiment)}
-            </p>
-          )}
-        </div>
-      )}
+      {/* ── Feature cards (isCard + combat tab) ─────────────── */}
+      {combatCards.map(f => (
+        <FeatureCardPanel
+          key={f.id}
+          feature={f}
+          activeValue={(character.featureCardStates ?? {})[f.id] ?? null}
+          onChange={val => setFeatureCardState(f.id, val)}
+        />
+      ))}
 
       {/* ── Actions / Bonus Actions / Reactions / Passive ──── */}
       {hasActions && ACTION_GROUPS.map(group => {
@@ -337,28 +298,62 @@ function SaveRow({ label, count, color, onAdd }: {
   );
 }
 
-// ── Helpers ────────────────────────────────────────────────────
+// ── Feature card panel ──────────────────────────────────────────
 
-function getKnownElements(character: Character): string[] {
-  const elements = new Set<string>();
-  for (const cls of character.classes) {
-    for (const choice of cls.choices) {
-      if (choice.choiceId === 'elemental_path') {
-        choice.selectedValues.forEach(v => elements.add(v.toLowerCase()));
-      }
-    }
-  }
-  return Array.from(elements);
-}
+function FeatureCardPanel({ feature, activeValue, onChange }: {
+  feature: Feature;
+  activeValue: string | null;
+  onChange: (val: string | null) => void;
+}) {
+  const options = useFeatureCardOptions(feature);
+  if (options.length === 0) return null;
 
-function getEmbodimentBonus(element: string): string {
-  switch (element) {
-    case 'water': return 'Roll max on 1 hit die + reroll 1s. Share healing with allies.';
-    case 'earth': return 'Gain (Prof)d4 temp HP at rest start. Unspent temp HP carries over.';
-    case 'fire':  return '+Prof to initiative. Add 1d6 to STR-based checks.';
-    case 'air':   return 'Fall ≤60ft/round. 15ft lateral movement per 10ft altitude change. Add 1d6 to DEX checks.';
-    default:      return '';
-  }
+  const activeOpt = options.find(o => o.id === activeValue);
+
+  return (
+    <div className="card">
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
+        <p className="label">{feature.name}</p>
+        {activeValue && (
+          <button onClick={() => onChange(null)} style={{ fontSize: 11, color: 'var(--text-2)', padding: '2px 6px' }}>
+            Clear
+          </button>
+        )}
+      </div>
+      {feature.cardSelectionLabel && (
+        <p style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 10 }}>
+          {feature.cardSelectionLabel}
+        </p>
+      )}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {options.map(opt => {
+          const active = activeValue === opt.id;
+          const color = opt.color ?? 'var(--accent)';
+          return (
+            <button key={opt.id}
+              onClick={() => onChange(active ? null : opt.id)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '6px 14px', borderRadius: 20, fontSize: 13, fontWeight: 600,
+                background: active ? color : 'var(--bg-2)',
+                color: active ? '#fff' : 'var(--text-1)',
+                border: `2px solid ${active ? color : 'var(--border)'}`,
+                transition: 'all 150ms ease',
+              }}
+            >
+              {opt.icon && <span>{opt.icon}</span>}
+              {opt.label.split(' — ')[0]}
+            </button>
+          );
+        })}
+      </div>
+      {activeOpt?.description && (
+        <p style={{ fontSize: 12, marginTop: 10, color: activeOpt.color ?? 'var(--accent)' }}>
+          {activeOpt.description}
+        </p>
+      )}
+    </div>
+  );
 }
 
 // ── Attacks panel ──────────────────────────────────────────────

@@ -69,6 +69,7 @@ export function buildDefaultCharacter(name: string): Character {
     appearance: {},
     biography: {},
     languages: [],
+    featureCardStates: {},
     proficiencies: {
       armor: [],
       weapons: [],

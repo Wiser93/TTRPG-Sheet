@@ -94,6 +94,36 @@ export function ProficiencySection({ character }: Props) {
   const fixedTools   = dedupe(classes.flatMap((c: DBClass) => c.toolProficiencies));
   const bgTools      = bg?.toolProficiencies ?? [];
 
+  // ── Class language choices ───────────────────────────────────
+  // Collect all `language` type choices from class creation choices + per-level
+  // entries for which the character has reached that level
+  const classLanguageChoices: {
+    choice: import('@/types/game').Choice;
+    resolved: import('@/types/character').ResolvedChoice[];
+    sourceName: string;
+    sourceId: string;
+  }[] = [];
+  for (const cls of classes) {
+    const charClass = character.classes.find(cc => cc.classId === cls.id);
+    if (!charClass) continue;
+    const reached = charClass.level;
+    // Creation choices
+    for (const ch of cls.creationChoices ?? []) {
+      if (ch.type === 'language') {
+        classLanguageChoices.push({ choice: ch, resolved: charClass.choices, sourceName: cls.name, sourceId: cls.id });
+      }
+    }
+    // Per-level choices up to current level
+    for (const lvl of cls.levelEntries ?? []) {
+      if (lvl.level > reached) continue;
+      for (const ch of lvl.choices ?? []) {
+        if (ch.type === 'language') {
+          classLanguageChoices.push({ choice: ch, resolved: charClass.choices, sourceName: `${cls.name} (lvl ${lvl.level})`, sourceId: cls.id });
+        }
+      }
+    }
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
@@ -214,7 +244,14 @@ export function ProficiencySection({ character }: Props) {
       ))}
 
       {/* ── Languages ───────────────────────────────────── */}
-      <LanguagesSection character={character} species={species} bg={bg} patchCharacter={patchCharacter} />
+      <LanguagesSection
+        character={character}
+        species={species}
+        bg={bg}
+        classLanguageChoices={classLanguageChoices}
+        patchCharacter={patchCharacter}
+        resolveBuilderChoice={resolveBuilderChoice}
+      />
 
       {/* ── Feat choices (e.g. "Versatile — choose an origin feat") ── */}
       {[
@@ -428,11 +465,18 @@ const COMMON_LANGUAGES = [
   'Deep Speech', 'Infernal', 'Primordial', 'Sylvan', 'Undercommon',
 ];
 
-function LanguagesSection({ character, species, bg, patchCharacter }: {
+function LanguagesSection({ character, species, bg, classLanguageChoices, patchCharacter, resolveBuilderChoice }: {
   character: import('@/types/character').Character;
   species: import('@/types/game').Species | undefined;
   bg: import('@/types/game').Background | undefined;
+  classLanguageChoices: {
+    choice: import('@/types/game').Choice;
+    resolved: import('@/types/character').ResolvedChoice[];
+    sourceName: string;
+    sourceId: string;
+  }[];
   patchCharacter: (changes: Partial<import('@/types/character').Character>) => void;
+  resolveBuilderChoice: (r: import('@/types/character').ResolvedChoice, source: 'class' | 'species' | 'background' | 'feat') => void;
 }) {
   // Fixed langs from species (array form) and background
   const fixedSpeciesLangs: string[] = Array.isArray(species?.languages)
@@ -541,6 +585,95 @@ function LanguagesSection({ character, species, bg, patchCharacter }: {
           ))}
         </div>
       )}
+
+      {/* ── Class-granted language choices ─────────────── */}
+      {classLanguageChoices.map(({ choice, resolved, sourceName, sourceId }) => (
+        <LanguageChoicePicker
+          key={choice.id}
+          choice={choice}
+          allResolved={resolved}
+          sourceName={sourceName}
+          sourceId={sourceId}
+          fixedLangs={fixedLangs}
+          onResolve={r => resolveBuilderChoice(r, 'class')}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ── Language choice picker (for class-granted picks) ──────────
+
+function LanguageChoicePicker({ choice, allResolved, sourceName, sourceId, fixedLangs, onResolve }: {
+  choice: import('@/types/game').Choice;
+  allResolved: import('@/types/character').ResolvedChoice[];
+  sourceName: string;
+  sourceId: string;
+  fixedLangs: Set<string>;
+  onResolve: (r: import('@/types/character').ResolvedChoice) => void;
+}) {
+  const resolved = allResolved.find(r => r.choiceId === choice.id);
+  const selected = new Set<string>(resolved?.selectedValues ?? []);
+  const count = choice.count ?? 1;
+
+  function toggle(lang: string) {
+    if (fixedLangs.has(lang)) return;
+    let next: string[];
+    if (selected.has(lang)) {
+      next = Array.from(selected).filter(l => l !== lang);
+    } else if (selected.size < count) {
+      next = [...Array.from(selected), lang];
+    } else if (count === 1) {
+      next = [lang];
+    } else return;
+    onResolve({
+      id: resolved?.id ?? crypto.randomUUID(),
+      sourceType: 'class',
+      sourceId,
+      level: 0,
+      choiceId: choice.id,
+      selectedValues: next,
+    });
+  }
+
+  function addCustom(lang: string) {
+    if (!selected.has(lang) && selected.size < count) {
+      const next = [...Array.from(selected), lang];
+      onResolve({
+        id: resolved?.id ?? crypto.randomUUID(),
+        sourceType: 'class',
+        sourceId,
+        level: 0,
+        choiceId: choice.id,
+        selectedValues: next,
+      });
+    }
+  }
+
+  return (
+    <div style={{ marginTop: 12 }}>
+      <p style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 6 }}>
+        <strong>{sourceName}:</strong> {choice.label} — choose {count}
+        <span style={{ marginLeft: 6, color: selected.size === count ? 'var(--accent-4)' : 'var(--accent)' }}>
+          ({selected.size}/{count})
+        </span>
+      </p>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
+        {COMMON_LANGUAGES.filter(l => !fixedLangs.has(l)).map(l => {
+          const isChosen = selected.has(l);
+          const disabled = !isChosen && selected.size >= count;
+          return (
+            <ProfChip
+              key={l}
+              label={l}
+              active={isChosen}
+              disabled={disabled}
+              onClick={() => toggle(l)}
+            />
+          );
+        })}
+      </div>
+      <AddProfInput placeholder="Custom language…" onAdd={addCustom} />
     </div>
   );
 }
