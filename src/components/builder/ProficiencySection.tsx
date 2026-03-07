@@ -250,7 +250,7 @@ export function ProficiencySection({ character }: Props) {
         bg={bg}
         classLanguageChoices={classLanguageChoices}
         patchCharacter={patchCharacter}
-        resolveBuilderChoice={resolveBuilderChoice}
+        resolveBuilderChoice={(r, src) => resolveBuilderChoice(r, src)}
       />
 
       {/* ── Feat choices (e.g. "Versatile — choose an origin feat") ── */}
@@ -476,7 +476,7 @@ function LanguagesSection({ character, species, bg, classLanguageChoices, patchC
     sourceId: string;
   }[];
   patchCharacter: (changes: Partial<import('@/types/character').Character>) => void;
-  resolveBuilderChoice: (r: import('@/types/character').ResolvedChoice, source: 'class' | 'species' | 'background' | 'feat') => void;
+  resolveBuilderChoice: (r: import('@/types/character').ResolvedChoice, source: 'class' | 'species' | 'background') => void;
 }) {
   // Fixed langs from species (array form) and background
   const fixedSpeciesLangs: string[] = Array.isArray(species?.languages)

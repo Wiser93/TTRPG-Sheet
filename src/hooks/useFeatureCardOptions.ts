@@ -1,6 +1,7 @@
 import { useCharacterStore } from '@/store/characterStore';
 import { useClasses } from '@/hooks/useGameDatabase';
 import type { Feature } from '@/types/game';
+import type { DBClass } from '@/db/schema';
 
 export type CardOption = {
   id: string;
@@ -10,31 +11,31 @@ export type CardOption = {
   icon?: string;
 };
 
-/**
- * For an isCard feature with cardOptionSource, returns the resolved list of
- * options available to this character — i.e. the union of option IDs the player
- * has selected across all choices with the matching choiceId, enriched with
- * display metadata (label, color, icon) pulled from the class DB definitions.
- */
 export function useFeatureCardOptions(feature: Feature): CardOption[] {
-  const character = useCharacterStore(s => s.character);
-  const allClasses = useClasses() ?? [];
+  const maybeCharacter = useCharacterStore(s => s.character);
+  const allClasses = (useClasses() ?? []) as DBClass[];
 
+  // Static options — no character needed
   if (!feature.isCard) return [];
   if (feature.cardOptions?.length) return feature.cardOptions;
   if (!feature.cardOptionSource) return [];
 
+  // Early-return before any character access
+  if (maybeCharacter === null || maybeCharacter === undefined) return [];
+  // Local non-nullable alias — TypeScript will definitely track this as non-null
+  const char = maybeCharacter;
+
   const { choiceId } = feature.cardOptionSource;
 
-  // 1. Collect every unique option ID the character has selected in any
-  //    resolved choice with this choiceId (across all classes/levels)
+  // 1. Collect unique option IDs selected across all resolved choices
   const selectedIds: string[] = [];
   const seen = new Set<string>();
-  const allResolved = [
-    ...character.classes.flatMap(cls => cls.choices),
-    ...character.speciesChoices,
-    ...character.backgroundChoices,
-  ];
+
+  const classChoices = char.classes.flatMap((cls) => cls.choices);
+  const speciesChoices = char.speciesChoices ?? [];
+  const bgChoices = char.backgroundChoices ?? [];
+  const allResolved = [...classChoices, ...speciesChoices, ...bgChoices];
+
   for (const r of allResolved) {
     if (r.choiceId !== choiceId) continue;
     for (const val of r.selectedValues) {
@@ -44,11 +45,10 @@ export function useFeatureCardOptions(feature: Feature): CardOption[] {
 
   if (selectedIds.length === 0) return [];
 
-  // 2. Find option metadata from class DB definitions
-  //    Walk every level entry's choices looking for one with the matching id
+  // 2. Enrich with display metadata from DB class definitions
   const optMeta: Record<string, Omit<CardOption, 'id'>> = {};
   for (const cls of allClasses) {
-    for (const level of cls.levels ?? []) {
+    for (const level of cls.levelEntries ?? []) {
       for (const choice of level.choices ?? []) {
         if (choice.id !== choiceId) continue;
         for (const opt of choice.options ?? []) {
@@ -56,14 +56,13 @@ export function useFeatureCardOptions(feature: Feature): CardOption[] {
             optMeta[opt.id] = {
               label: opt.label,
               description: opt.description,
-              color: opt.color,
-              icon: opt.icon,
+              color: (opt as CardOption).color,
+              icon: (opt as CardOption).icon,
             };
           }
         }
       }
     }
-    // Also check top-level creationChoices
     for (const choice of cls.creationChoices ?? []) {
       if (choice.id !== choiceId) continue;
       for (const opt of choice.options ?? []) {
@@ -71,19 +70,18 @@ export function useFeatureCardOptions(feature: Feature): CardOption[] {
           optMeta[opt.id] = {
             label: opt.label,
             description: opt.description,
-            color: opt.color,
-            icon: opt.icon,
+            color: (opt as CardOption).color,
+            icon: (opt as CardOption).icon,
           };
         }
       }
     }
   }
 
-  // 3. Build final list — use DB metadata where available, fall back to id
+  // 3. Build final list — use DB metadata where available
   return selectedIds.map(id => {
     const meta = optMeta[id];
     const rawLabel = meta?.label ?? id;
-    // Strip " — Tier X / subtext" so the pill shows just the element name
     const shortLabel = rawLabel.split(' — ')[0].split('(')[0].trim();
     return {
       id,
