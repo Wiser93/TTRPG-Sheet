@@ -191,19 +191,19 @@ function EcPanel({ resource, derivedMax }: { resource: ResourceState; derivedMax
   return (
     <div className="card" style={{ border: '2px solid var(--accent)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-        <p className="label">⚡ Elemental Charges</p>
-        <span style={{ fontSize: 12, color: 'var(--text-2)' }}>long rest · auto-calculated</span>
+        <p className="label">⚡ {resource.name}</p>
+        <span style={{ fontSize: 12, color: 'var(--text-2)' }}>{resource.rechargeOn.replace(/_/g, ' ')}</span>
       </div>
 
       {/* Big numeric counter */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, marginBottom: 10 }}>
-        <button onClick={() => expendResource(resource.id)} className="btn btn-ghost"
+        <button onClick={() => expendResource(resource.id, 1, max)} className="btn btn-ghost"
           style={{ fontSize: 22, padding: '4px 14px', fontWeight: 700 }}>−</button>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 40, fontWeight: 900, lineHeight: 1, color: 'var(--accent)' }}>{current}</div>
           <div style={{ fontSize: 13, color: 'var(--text-2)' }}>/ {max}</div>
         </div>
-        <button onClick={() => restoreResource(resource.id, 1)} className="btn btn-ghost"
+        <button onClick={() => restoreResource(resource.id, 1, max)} className="btn btn-ghost"
           style={{ fontSize: 22, padding: '4px 14px', fontWeight: 700 }}>+</button>
       </div>
 
@@ -211,7 +211,9 @@ function EcPanel({ resource, derivedMax }: { resource: ResourceState; derivedMax
       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'center' }}>
         {Array.from({ length: max }).map((_, i) => (
           <button key={i}
-            onClick={() => i < current ? expendResource(resource.id) : restoreResource(resource.id, 1)}
+            onClick={() => i < current
+              ? expendResource(resource.id, 1, max)
+              : restoreResource(resource.id, 1, max)}
             style={{
               width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
               background: i < current ? 'var(--accent)' : 'var(--bg-2)',
@@ -295,12 +297,12 @@ function ResourcePanel({ resource, derivedMax }: { resource: ResourceState; deri
           <p style={{ fontSize: 11, color: 'var(--text-2)' }}>{resource.rechargeOn.replace(/_/g, ' ')}</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <button onClick={() => expendResource(resource.id)} className="btn btn-ghost"
+          <button onClick={() => expendResource(resource.id, 1, max)} className="btn btn-ghost"
             style={{ fontSize: 20, padding: '2px 10px', fontWeight: 700 }}>−</button>
           <span style={{ minWidth: 64, textAlign: 'center', fontWeight: 800, fontSize: 26, fontVariantNumeric: 'tabular-nums' }}>
             {current}<span style={{ fontSize: 14, fontWeight: 400, color: 'var(--text-2)' }}>/{max}</span>
           </span>
-          <button onClick={() => restoreResource(resource.id, 1)} className="btn btn-ghost"
+          <button onClick={() => restoreResource(resource.id, 1, max)} className="btn btn-ghost"
             style={{ fontSize: 20, padding: '2px 10px', fontWeight: 700 }}>+</button>
         </div>
       </div>
@@ -308,7 +310,9 @@ function ResourcePanel({ resource, derivedMax }: { resource: ResourceState; deri
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 4 }}>
           {Array.from({ length: max }).map((_, i) => (
             <button key={i}
-              onClick={() => i < current ? expendResource(resource.id) : restoreResource(resource.id, 1)}
+              onClick={() => i < current
+                ? expendResource(resource.id, 1, max)
+                : restoreResource(resource.id, 1, max)}
               style={{
                 width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
                 background: i < current ? 'var(--accent-4)' : 'var(--bg-2)',

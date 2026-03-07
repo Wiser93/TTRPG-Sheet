@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { LabeledInput, LabeledSelect, LabeledTextarea } from '@/components/ui/FormField';
 import type { Feature, ActionType, StatKey } from '@/types/game';
+import { useClasses } from '@/hooks/useGameDatabase';
 import type { ResourceFormulaTerm } from '@/types/character';
 
 const ACTION_TYPE_OPTIONS = [
@@ -216,6 +217,9 @@ export function FeatureForm({ initial, onSave, isSaving }: Props) {
                 terms={f.resourceFormula ?? []}
                 onChange={resourceFormula => patch({ resourceFormula })}
               />
+              <p style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 4 }}>
+                Tip: for Elemental Charges use <em>WIS mod + ½ [class] level</em>.
+              </p>
             </div>
 
             {/* Recharge + combat toggle */}
@@ -325,6 +329,7 @@ function FormulaBuilder({ terms, onChange }: {
   terms: ResourceFormulaTerm[];
   onChange: (terms: ResourceFormulaTerm[]) => void;
 }) {
+  const allClasses = useClasses() ?? [];
   function add() {
     onChange([...terms, { type: 'flat', value: 1 }]);
   }
@@ -351,12 +356,13 @@ function FormulaBuilder({ terms, onChange }: {
               onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
                 const type = e.target.value as ResourceFormulaTerm['type'];
                 // Build a valid default for the new type
+                const firstClassId = allClasses[0]?.id ?? '';
                 const defaults: Record<string, ResourceFormulaTerm> = {
                   flat:              { type: 'flat', value: 1 },
                   stat_mod:          { type: 'stat_mod', stat: 'wisdom' },
                   proficiency_bonus: { type: 'proficiency_bonus' },
-                  class_level:       { type: 'class_level', classId: '' },
-                  half_class_level:  { type: 'half_class_level', classId: '' },
+                  class_level:       { type: 'class_level', classId: firstClassId },
+                  half_class_level:  { type: 'half_class_level', classId: firstClassId },
                   total_level:       { type: 'total_level' },
                 };
                 onChange(terms.map((t, idx) => idx === i ? defaults[type] : t));
@@ -384,10 +390,20 @@ function FormulaBuilder({ terms, onChange }: {
           )}
           {(term.type === 'class_level' || term.type === 'half_class_level') && (
             <div style={{ flex: 1 }}>
-              {i === 0 && <label style={{ fontSize: 10, color: 'var(--text-2)', display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Class ID</label>}
-              <input value={term.classId ?? ''}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => update(i, { classId: e.target.value })}
-                placeholder="e.g. elemental-shaper" />
+              {i === 0 && <label style={{ fontSize: 10, color: 'var(--text-2)', display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Class</label>}
+              {allClasses.length > 0 ? (
+                <select value={term.classId ?? ''}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => update(i, { classId: e.target.value })}>
+                  <option value="">— Select class —</option>
+                  {allClasses.map(cls => (
+                    <option key={cls.id} value={cls.id}>{cls.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <input value={term.classId ?? ''}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => update(i, { classId: e.target.value })}
+                  placeholder="No classes in DB yet — type ID" />
+              )}
             </div>
           )}
           {(term.type === 'proficiency_bonus' || term.type === 'total_level') && (

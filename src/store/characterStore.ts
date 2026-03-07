@@ -47,8 +47,8 @@ interface CharacterStore {
   setSlots: (slots: SpellSlotState[]) => void;
 
   // ── Resources ──────────────────────────────────────────────
-  expendResource: (id: string, amount?: number) => void;
-  restoreResource: (id: string, amount?: number) => void;
+  expendResource: (id: string, amount?: number, derivedMax?: number) => void;
+  restoreResource: (id: string, amount?: number, derivedMax?: number) => void;
   setResourceMax: (id: string, max: number) => void;
   addResource: (resource: ResourceState) => void;
 
@@ -219,13 +219,31 @@ export const useCharacterStore = create<CharacterStore>()(
     setSlots: (slots) => mutate(set, get, c => { c.spellSlots = slots as never; }),
 
     // ── Resources ────────────────────────────────────────────
-    expendResource: (id, amount = 1) => mutate(set, get, c => {
-      const r = c.resources.find(x => x.id === id);
-      if (r) r.current = Math.max(0, r.current - amount);
+    expendResource: (id, amount = 1, derivedMax) => mutate(set, get, c => {
+      let r = c.resources.find(x => x.id === id);
+      if (!r) {
+        // Synthetic resource (from isResource feature) — auto-register so current is persisted
+        const max = derivedMax ?? 1;
+        r = { id, name: id, current: max, max, rechargeOn: 'long_rest' };
+        c.resources.push(r as never);
+        r = c.resources[c.resources.length - 1] as typeof r;
+      } else if (derivedMax !== undefined) {
+        r.max = derivedMax;
+      }
+      r!.current = Math.max(0, r!.current - amount);
     }),
-    restoreResource: (id, amount) => mutate(set, get, c => {
-      const r = c.resources.find(x => x.id === id);
-      if (r) r.current = Math.min(r.max, r.current + (amount ?? r.max));
+    restoreResource: (id, amount, derivedMax) => mutate(set, get, c => {
+      let r = c.resources.find(x => x.id === id);
+      if (!r) {
+        const max = derivedMax ?? 1;
+        r = { id, name: id, current: 0, max, rechargeOn: 'long_rest' };
+        c.resources.push(r as never);
+        r = c.resources[c.resources.length - 1] as typeof r;
+      } else if (derivedMax !== undefined) {
+        r.max = derivedMax;
+      }
+      const max = derivedMax ?? r!.max;
+      r!.current = Math.min(max, r!.current + (amount ?? max));
     }),
     setResourceMax: (id, max) => mutate(set, get, c => {
       const r = c.resources.find(x => x.id === id);
