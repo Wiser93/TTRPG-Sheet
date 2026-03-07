@@ -395,9 +395,37 @@ export function deriveStats(character: Character, gameData: GameData): DerivedSt
   const classLevels = Object.fromEntries(
     character.classes.map(c => [c.classId, c.level])
   );
-  const resourceMaxes = deriveResourceMaxes(character.resources, {
-    statMods, profBonus, totalLevel, classLevels,
-  });
+
+  // ── Synthesize ResourceState entries from isResource features ──
+  // Each feature with isResource:true produces a ResourceState that is
+  // merged with any existing character.resources entry (preserving .current).
+  function slugify(name: string): string {
+    return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  }
+
+  const syntheticResources: import('@/types/character').ResourceState[] = allFeatures
+    .filter(f => f.isResource)
+    .map(f => {
+      const id = f.resourceId ?? slugify(f.name);
+      const existing = character.resources.find(r => r.id === id);
+      return {
+        id,
+        name:        f.resourceName ?? f.name,
+        current:     existing?.current ?? 0,
+        max:         existing?.max ?? 1,
+        maxFormula:  f.resourceFormula?.length ? f.resourceFormula : existing?.maxFormula,
+        minMax:      f.resourceMin ?? existing?.minMax ?? 1,
+        rechargeOn:  f.resourceRecharge ?? existing?.rechargeOn ?? 'long_rest',
+      };
+    });
+
+  // Merge: synthetic takes precedence for definition, manual resources are kept
+  const syntheticIds = new Set(syntheticResources.map(r => r.id));
+  const manualResources = character.resources.filter(r => !syntheticIds.has(r.id));
+  const allResources = [...syntheticResources, ...manualResources];
+
+  const resourceMaxCtx = { statMods, profBonus, totalLevel, classLevels };
+  const resourceMaxes = deriveResourceMaxes(allResources, resourceMaxCtx);
 
   return {
     stats: finalStats,
@@ -415,6 +443,7 @@ export function deriveStats(character: Character, gameData: GameData): DerivedSt
     allModifiers,
     spellAttackBonus,
     spellSaveDC,
+    allResources,
     resourceMaxes,
     extraWeaponProfs,
     extraArmorProfs,

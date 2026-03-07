@@ -1,5 +1,9 @@
 import { useState } from 'react';
 import { useCharacterStore } from '@/store/characterStore';
+
+function slugify(name: string) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
 import { useItems } from '@/hooks/useGameDatabase';
 import type { Character, DerivedStats, ResourceState } from '@/types/character';
 import type { Feature, ActionType } from '@/types/game';
@@ -31,9 +35,14 @@ export function CombatTab({ character, derived }: Props) {
   const knownElements = getKnownElements(character);
   const hasElementalEmbodiment = knownElements.length > 0;
 
-  // EC resource — special treatment
-  const ecResource = character.resources.find(r => r.id === 'elemental-charges');
-  const otherResources = character.resources.filter(r => r.id !== 'elemental-charges');
+  // Resources from derived (synthetic from isResource features + manual)
+  // combatResource:true features get their own prominent panel (like EC)
+  // others appear in the secondary Resources section
+  const combatResources = derived.allResources.filter(r => {
+    const feat = derived.allFeatures.find(f => (f.resourceId ?? slugify(f.name)) === r.id);
+    return feat?.combatResource ?? r.id === 'elemental-charges';
+  });
+  const otherResources = derived.allResources.filter(r => !combatResources.some(c => c.id === r.id));
 
   // Features grouped by action type
   const featuresWithAction = derived.allFeatures.filter(f => f.actionType);
@@ -58,10 +67,10 @@ export function CombatTab({ character, derived }: Props) {
         </div>
       )}
 
-      {/* ── Elemental Charges (prominent) ──────────────────── */}
-      {ecResource && (
-        <EcPanel resource={ecResource} derivedMax={derived.resourceMaxes[ecResource.id]} />
-      )}
+      {/* ── Combat resources (prominent panels) ────────────── */}
+      {combatResources.map(r => (
+        <EcPanel key={r.id} resource={r} derivedMax={derived.resourceMaxes[r.id]} />
+      ))}
 
       {/* ── Weapon Attacks ────────────────────────────────── */}
       <AttacksPanel character={character} derived={derived} />

@@ -141,7 +141,59 @@ export interface Feature {
   tags?: string[];
   sourceId?: string;
   sourceType?: 'class' | 'subclass' | 'background' | 'feat' | 'species';
+
+  // ── Resource grant ─────────────────────────────────────────
+  /**
+   * If true, this feature creates a tracked resource (like Elemental Charges).
+   * The resource is automatically added to character.resources when derived.
+   */
+  isResource?: boolean;
+  /**
+   * Stable ID for the resource created by this feature.
+   * Used as character.resources[].id and for cross-feature prerequisites.
+   * If omitted, falls back to slugify(name).
+   * e.g. "elemental-charges"
+   */
+  resourceId?: string;
+  /** Override display name for the resource (defaults to feature name) */
+  resourceName?: string;
+  /**
+   * Formula for computing max. Each term is summed.
+   * e.g. [{ type: 'stat_mod', stat: 'wisdom' }, { type: 'half_class_level', classId: 'elemental-shaper' }]
+   */
+  resourceFormula?: ResourceFormulaTerm[];
+  /** When the resource recharges */
+  resourceRecharge?: 'short_rest' | 'long_rest' | 'dawn' | 'never';
+  /** Minimum value for the computed max (default 1) */
+  resourceMin?: number;
+  /**
+   * If true, the resource counter appears prominently in the Combat tab.
+   * If false/absent, it still appears in the Resources section of Combat.
+   */
+  combatResource?: boolean;
+  /**
+   * IDs of resources (resourceId values) this feature requires to use.
+   * Used for display/filtering — e.g. a technique that costs Elemental Charges.
+   */
+  requiresResourceIds?: string[];
 }
+
+// ============================================================
+// RESOURCE FORMULA
+// ============================================================
+
+/**
+ * A formula term for computing a resource's max from derived stats.
+ * All terms in the array are summed. E.g. Elemental Charges:
+ *   [{ type: 'stat_mod', stat: 'wisdom' }, { type: 'half_class_level', classId: 'elemental-shaper' }]
+ */
+export type ResourceFormulaTerm =
+  | { type: 'flat'; value: number }
+  | { type: 'stat_mod'; stat: StatKey }
+  | { type: 'proficiency_bonus' }
+  | { type: 'half_class_level'; classId: string }
+  | { type: 'class_level'; classId: string }
+  | { type: 'total_level' };
 
 // ============================================================
 // MODIFIERS

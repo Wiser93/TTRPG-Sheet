@@ -1,4 +1,4 @@
-import type { StatKey, SkillKey, EquipSlot, Feature, Modifier } from './game';
+import type { StatKey, SkillKey, EquipSlot, Feature, Modifier, ResourceFormulaTerm } from './game';
 
 // ============================================================
 // STATS & SKILLS
@@ -69,18 +69,9 @@ export interface ActiveCondition {
 // RESOURCES (spell slots, ki, rage, etc.)
 // ============================================================
 
-/**
- * A formula term for computing a resource's max from derived stats.
- * All terms in the array are summed. E.g. Elemental Charges:
- *   [{ type: 'stat_mod', stat: 'wisdom' }, { type: 'half_class_level', classId: 'elemental-shaper' }]
- */
-export type ResourceFormulaTerm =
-  | { type: 'flat'; value: number }
-  | { type: 'stat_mod'; stat: import('./game').StatKey }
-  | { type: 'proficiency_bonus' }
-  | { type: 'half_class_level'; classId: string }
-  | { type: 'class_level'; classId: string }
-  | { type: 'total_level' };
+// ResourceFormulaTerm lives in game.ts to avoid circular imports.
+// Re-exported here for backwards-compat with existing imports from character.ts.
+export type { ResourceFormulaTerm } from './game';
 
 export interface ResourceState {
   id: string;
@@ -323,6 +314,8 @@ export interface DerivedStats {
   allModifiers: Modifier[];
   spellAttackBonus: Record<string, number>;   // keyed by classId
   spellSaveDC: Record<string, number>;        // keyed by classId
+  /** Merged resource list (synthetic from features + manual), used for Combat tab */
+  allResources: ResourceState[];
   /** Resolved max for each resource with a maxFormula, keyed by resource id */
   resourceMaxes: Record<string, number>;
   /** Weapon proficiency ids/names granted by DB-sourced choice picks */
