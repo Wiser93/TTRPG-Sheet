@@ -152,6 +152,10 @@ export async function upsertSpecies(s: InsertPayload<DBSpecies> & { id?: string 
 // BACKGROUNDS
 // ============================================================
 
+export async function deleteSpecies(id: string): Promise<void> {
+  await db.species.update(id, { deletedAt: new Date().toISOString(), isDirty: true });
+}
+
 export async function getBackgrounds(): Promise<DBBackground[]> {
   return live(db.backgrounds).toArray();
 }
@@ -165,6 +169,10 @@ export async function upsertBackground(bg: InsertPayload<DBBackground> & { id?: 
   const record: DBBackground = { ...bg, ...makeDBMeta() } as DBBackground;
   await db.backgrounds.add(record);
   return record.id;
+}
+
+export async function deleteBackground(id: string): Promise<void> {
+  await db.backgrounds.update(id, { deletedAt: new Date().toISOString(), isDirty: true });
 }
 
 // ============================================================

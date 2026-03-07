@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useUIStore } from '@/store/uiStore';
 import { useItems, useSpells, useClasses, useFeats, useAllSpecies, useBackgrounds, useFeatures } from '@/hooks/useGameDatabase';
-import { upsertItem, deleteItem, upsertSpell, deleteSpell, upsertClass, deleteClass, upsertFeat, deleteFeat, upsertSpecies, upsertBackground, upsertFeature, deleteFeature } from '@/db/gameDatabase';
+import { upsertItem, deleteItem, upsertSpell, deleteSpell, upsertClass, deleteClass, upsertFeat, deleteFeat, upsertSpecies, deleteSpecies, upsertBackground, deleteBackground, upsertFeature, deleteFeature } from '@/db/gameDatabase';
 import { elementalShaperClass } from '@/data/elementalShaper';
 import { SlidePanel } from '@/components/ui/SlidePanel';
 import { ItemForm } from './forms/ItemForm';
@@ -85,11 +85,13 @@ export function DatabaseView() {
 
   async function handleDelete(type: SectionKey, id: string) {
     if (!confirm('Delete this entry? This cannot be undone.')) return;
-    if (type === 'items')        await deleteItem(id);
-    else if (type === 'spells')  await deleteSpell(id);
-    else if (type === 'classes') await deleteClass(id);
-    else if (type === 'feats')   await deleteFeat(id);
-    else if (type === 'features') await deleteFeature(id);
+    if (type === 'items')            await deleteItem(id);
+    else if (type === 'spells')      await deleteSpell(id);
+    else if (type === 'classes')     await deleteClass(id);
+    else if (type === 'feats')       await deleteFeat(id);
+    else if (type === 'features')    await deleteFeature(id);
+    else if (type === 'species')     await deleteSpecies(id);
+    else if (type === 'backgrounds') await deleteBackground(id);
   }
 
   // ── Panel title ─────────────────────────────────────────────
@@ -227,7 +229,7 @@ function EntryCard({
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const canDelete = ['items','spells','classes','feats'].includes(section);
+  const canDelete = true;
   const subtitle = entrySubtitle(entry, section);
 
   return (
