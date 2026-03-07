@@ -1,4 +1,5 @@
 import { useCharacterStore } from '@/store/characterStore';
+import { useBackgrounds, useAllSpecies } from '@/hooks/useGameDatabase';
 import type { Character, DerivedStats } from '@/types/character';
 import type { StatKey, SkillKey } from '@/types/game';
 
@@ -37,7 +38,22 @@ function sign(n: number) { return n >= 0 ? `+${n}` : `${n}`; }
 interface Props { character: Character; derived: DerivedStats; }
 
 export function OverviewTab({ character, derived }: Props) {
-  const { setCurrentHP } = useCharacterStore();
+  const { setCurrentHP, shortRest, longRest } = useCharacterStore();
+  const allSpecies    = useAllSpecies()   ?? [];
+  const allBackgrounds = useBackgrounds() ?? [];
+  const species    = allSpecies.find(s => s.id === character.speciesId);
+  const background = allBackgrounds.find(b => b.id === character.backgroundId);
+
+  // Collect all languages
+  const fixedLangs = new Set<string>(['Common', ...((Array.isArray(species?.languages) ? species.languages : []) as string[])]);
+  const allLangs = Array.from(new Set([...Array.from(fixedLangs), ...character.languages]));
+
+  // Collect all tool proficiencies
+  const allTools = Array.from(new Set([
+    ...(background?.toolProficiencies ?? []),
+    ...character.proficiencies.tools,
+    ...derived.extraToolProfs,
+  ]));
 
   return (
     <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -49,9 +65,27 @@ export function OverviewTab({ character, derived }: Props) {
         <QuickStat label="Speed" value={`${derived.speed}ft`} />
       </div>
 
-      {/* HP bar */}
+      {/* HP bar + rest buttons */}
       <div className="card">
-        <p className="label" style={{ marginBottom: 8 }}>Hit Points</p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <p className="label">Hit Points</p>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button
+              className="btn btn-ghost"
+              style={{ fontSize: 11, padding: '3px 10px' }}
+              onClick={() => shortRest(0)}
+            >
+              Short Rest
+            </button>
+            <button
+              className="btn btn-ghost"
+              style={{ fontSize: 11, padding: '3px 10px' }}
+              onClick={longRest}
+            >
+              Long Rest
+            </button>
+          </div>
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
           <input
             type="number"
@@ -149,6 +183,51 @@ export function OverviewTab({ character, derived }: Props) {
               </div>
             );
           })}
+        </div>
+      </div>
+
+      {/* Languages & Tool Proficiencies */}
+      <div className="card">
+        <div style={{ display: 'grid', gridTemplateColumns: allTools.length ? '1fr 1fr' : '1fr', gap: 16 }}>
+
+          {/* Languages */}
+          <div>
+            <p className="label" style={{ marginBottom: 8 }}>Languages</p>
+            {allLangs.length === 0 ? (
+              <p style={{ fontSize: 12, color: 'var(--text-2)', fontStyle: 'italic' }}>None set</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {allLangs.map(lang => (
+                  <div key={lang} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+                    <span style={{
+                      width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                      background: fixedLangs.has(lang) ? 'var(--accent-4)' : 'var(--accent)',
+                    }} />
+                    <span>{lang}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Tool Proficiencies */}
+          {allTools.length > 0 && (
+            <div>
+              <p className="label" style={{ marginBottom: 8 }}>Tool Proficiencies</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {allTools.map(tool => (
+                  <div key={tool} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+                    <span style={{
+                      width: 8, height: 8, borderRadius: 2, flexShrink: 0,
+                      background: 'var(--accent)',
+                    }} />
+                    <span>{tool}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
 

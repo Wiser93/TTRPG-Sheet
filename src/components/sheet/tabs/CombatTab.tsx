@@ -28,7 +28,7 @@ interface Props { character: Character; derived: DerivedStats }
 
 export function CombatTab({ character, derived }: Props) {
   const {
-    addDeathSave, resetDeathSaves, shortRest, longRest,
+    addDeathSave, resetDeathSaves,
     addCondition, removeCondition, setElementalEmbodiment,
   } = useCharacterStore();
 
@@ -166,15 +166,6 @@ export function CombatTab({ character, derived }: Props) {
           }}>
           + Add Condition
         </button>
-      </div>
-
-      {/* ── Rests ──────────────────────────────────────────── */}
-      <div className="card">
-        <p className="label" style={{ marginBottom: 8 }}>Rests</p>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn btn-ghost" onClick={() => shortRest(0)}>Short Rest</button>
-          <button className="btn btn-ghost" onClick={longRest}>Long Rest</button>
-        </div>
       </div>
 
     </div>

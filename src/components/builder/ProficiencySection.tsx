@@ -213,6 +213,9 @@ export function ProficiencySection({ character }: Props) {
         />
       ))}
 
+      {/* ── Languages ───────────────────────────────────── */}
+      <LanguagesSection character={character} species={species} bg={bg} patchCharacter={patchCharacter} />
+
       {/* ── Feat choices (e.g. "Versatile — choose an origin feat") ── */}
       {[
         ...(species?.creationChoices ?? []).filter(c => c.type === 'feat').map(c => ({
@@ -413,6 +416,131 @@ function SkillChoicePicker({ choice, allResolved, sourceName, bgSkills, onResolv
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// ── Languages section ─────────────────────────────────────────
+
+const COMMON_LANGUAGES = [
+  'Common', 'Dwarvish', 'Elvish', 'Giant', 'Gnomish', 'Goblin',
+  'Halfling', 'Orcish', 'Abyssal', 'Celestial', 'Draconic',
+  'Deep Speech', 'Infernal', 'Primordial', 'Sylvan', 'Undercommon',
+];
+
+function LanguagesSection({ character, species, bg, patchCharacter }: {
+  character: import('@/types/character').Character;
+  species: import('@/types/game').Species | undefined;
+  bg: import('@/types/game').Background | undefined;
+  patchCharacter: (changes: Partial<import('@/types/character').Character>) => void;
+}) {
+  // Fixed langs from species (array form) and background
+  const fixedSpeciesLangs: string[] = Array.isArray(species?.languages)
+    ? species.languages as string[]
+    : [];
+  // Number of free picks granted by species/background
+  const speciesFreeCount = typeof species?.languages === 'number' ? species.languages : 0;
+  const bgFreeCount = typeof bg?.languages === 'number' ? bg.languages : 0;
+  const totalFree = speciesFreeCount + bgFreeCount;
+
+  const fixedLangs = new Set(['Common', ...fixedSpeciesLangs]);
+  const chosen = character.languages;
+  const chosenSet = new Set(chosen);
+
+  // How many free picks still available
+  const freeUsed = chosen.filter(l => !fixedLangs.has(l)).length;
+  const freeLeft = Math.max(0, totalFree - freeUsed);
+
+  function toggle(lang: string) {
+    if (fixedLangs.has(lang)) return;
+    if (chosenSet.has(lang)) {
+      patchCharacter({ languages: chosen.filter(l => l !== lang) });
+    } else if (freeLeft > 0) {
+      patchCharacter({ languages: [...chosen, lang] });
+    }
+  }
+
+  function addCustom(lang: string) {
+    if (!chosenSet.has(lang) && freeLeft > 0) {
+      patchCharacter({ languages: [...chosen, lang] });
+    }
+  }
+
+  function remove(lang: string) {
+    if (!fixedLangs.has(lang)) {
+      patchCharacter({ languages: chosen.filter(l => l !== lang) });
+    }
+  }
+
+  return (
+    <div>
+      <SectionHeading label="Languages" />
+
+      {/* Fixed grants */}
+      {fixedLangs.size > 0 && (
+        <div style={{ marginBottom: 8 }}>
+          <p style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 4 }}>Fixed (species / all characters)</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {Array.from(fixedLangs).map(l => (
+              <ProfChip key={l} label={l} active locked />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Free picks */}
+      {totalFree > 0 && (
+        <div style={{ marginBottom: 8 }}>
+          <p style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 6 }}>
+            Additional languages — choose {totalFree}
+            <span style={{ marginLeft: 6, color: freeLeft === 0 ? 'var(--accent-4)' : 'var(--accent)' }}>
+              ({freeUsed}/{totalFree})
+            </span>
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+            {COMMON_LANGUAGES.filter(l => !fixedLangs.has(l)).map(l => {
+              const isChosen = chosenSet.has(l);
+              const disabled = !isChosen && freeLeft === 0;
+              return (
+                <ProfChip
+                  key={l}
+                  label={l}
+                  active={isChosen}
+                  disabled={disabled}
+                  onClick={() => toggle(l)}
+                />
+              );
+            })}
+          </div>
+          <AddProfInput placeholder="Custom language…" onAdd={addCustom} />
+        </div>
+      )}
+
+      {/* Manual — if no free picks granted, still allow adding */}
+      {totalFree === 0 && (
+        <div>
+          <p style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 6 }}>
+            Manually add languages known
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
+            {chosen.filter(l => !fixedLangs.has(l)).map(l => (
+              <ProfChip key={l} label={l} active onClick={() => remove(l)} />
+            ))}
+          </div>
+          <AddProfInput placeholder="Add language…" onAdd={l => {
+            if (!chosenSet.has(l)) patchCharacter({ languages: [...chosen, l] });
+          }} />
+        </div>
+      )}
+
+      {/* Always show chosen custom languages even in free-pick mode */}
+      {totalFree > 0 && chosen.filter(l => !fixedLangs.has(l) && !COMMON_LANGUAGES.includes(l)).length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+          {chosen.filter(l => !fixedLangs.has(l) && !COMMON_LANGUAGES.includes(l)).map(l => (
+            <ProfChip key={l} label={l} active onClick={() => remove(l)} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
