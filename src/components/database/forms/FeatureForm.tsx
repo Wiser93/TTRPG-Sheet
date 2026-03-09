@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { LabeledInput, LabeledSelect, LabeledTextarea } from '@/components/ui/FormField';
 import type { Feature, ActionType, StatKey } from '@/types/game';
 import { useClasses } from '@/hooks/useGameDatabase';
@@ -96,6 +96,12 @@ export function FeatureForm({ initial, onSave, isSaving }: Props) {
     resourceMin:        initial?.resourceMin        ?? 1,
     combatResource:     initial?.combatResource     ?? false,
     requiresResourceIds:initial?.requiresResourceIds ?? [],
+    // Card fields
+    isCard:             initial?.isCard              ?? false,
+    cardTab:            initial?.cardTab             ?? 'combat',
+    cardSelectionLabel: initial?.cardSelectionLabel  ?? '',
+    cardOptionSource:   initial?.cardOptionSource    ?? undefined,
+    cardOptions:        (initial?.cardOptions        ?? []) as Array<{ id: string; label: string; description?: string; color?: string; icon?: string }>,
   });
 
   function patch(changes: Partial<Omit<Feature, 'id'>>) {
@@ -119,6 +125,12 @@ export function FeatureForm({ initial, onSave, isSaving }: Props) {
       resourceMin:         f.isResource ? (f.resourceMin ?? 1) : undefined,
       combatResource:      f.isResource ? f.combatResource : undefined,
       requiresResourceIds: f.requiresResourceIds?.length ? f.requiresResourceIds : undefined,
+      // Card fields
+      isCard:             f.isCard || undefined,
+      cardTab:            f.isCard ? (f.cardTab ?? 'combat') : undefined,
+      cardSelectionLabel: f.isCard && f.cardSelectionLabel?.trim() ? f.cardSelectionLabel.trim() : undefined,
+      cardOptionSource:   f.isCard ? f.cardOptionSource : undefined,
+      cardOptions:        (f.isCard && !f.cardOptionSource && f.cardOptions?.length) ? f.cardOptions : undefined,
     });
   }
 
@@ -242,6 +254,9 @@ export function FeatureForm({ initial, onSave, isSaving }: Props) {
           </div>
         )}
       </div>
+
+      {/* ── Card Section ─────────────────────────────────── */}
+      <CardSection f={f} patch={patch} />
 
       {/* ── Prerequisites / cross-feature links ─────────── */}
       <div style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 8, padding: 12 }}>
@@ -417,6 +432,199 @@ function FormulaBuilder({ terms, onChange }: {
       <button type="button" className="btn btn-ghost" style={{ alignSelf: 'flex-start', fontSize: 12 }} onClick={add}>
         + Add term
       </button>
+    </div>
+  );
+}
+
+// ── Card Section ─────────────────────────────────────────────
+
+type CardState = { id: string; label: string; description?: string; color?: string; icon?: string };
+
+function CardSection({ f, patch }: {
+  f: Partial<Feature> & { isCard?: boolean; cardTab?: string; cardSelectionLabel?: string; cardOptionSource?: { choiceId: string }; cardOptions?: CardState[] };
+  patch: (changes: Partial<Feature & { isCard: boolean; cardTab: string; cardSelectionLabel: string; cardOptionSource?: { choiceId: string }; cardOptions: CardState[] }>) => void;
+}) {
+  const [newOptId, setNewOptId] = React.useState('');
+  const [newOptLabel, setNewOptLabel] = React.useState('');
+  const [newOptColor, setNewOptColor] = React.useState('#61afef');
+  const [newOptIcon, setNewOptIcon] = React.useState('');
+
+  const options: CardState[] = f.cardOptions ?? [];
+  const useSource = Boolean(f.cardOptionSource);
+
+  function addOption() {
+    if (!newOptId.trim() || !newOptLabel.trim()) return;
+    const next: CardState[] = [...options, {
+      id: newOptId.trim().toLowerCase().replace(/\s+/g, '-'),
+      label: newOptLabel.trim(),
+      description: undefined,
+      color: newOptColor || undefined,
+      icon: newOptIcon.trim() || undefined,
+    }];
+    (patch as (c: object) => void)({ cardOptions: next });
+    setNewOptId(''); setNewOptLabel(''); setNewOptColor('#61afef'); setNewOptIcon('');
+  }
+
+  function removeOption(id: string) {
+    (patch as (c: object) => void)({ cardOptions: options.filter(o => o.id !== id) });
+  }
+
+  function updateOption(id: string, changes: Partial<CardState>) {
+    (patch as (c: object) => void)({ cardOptions: options.map(o => o.id === id ? { ...o, ...changes } : o) });
+  }
+
+  return (
+    <div style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 8, padding: 12 }}>
+      {/* Toggle */}
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: f.isCard ? 14 : 0 }}>
+        <input type="checkbox" checked={f.isCard ?? false}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => (patch as (c: object) => void)({ isCard: e.target.checked })}
+          style={{ accentColor: 'var(--accent)', width: 15, height: 15 }} />
+        <span style={{ fontWeight: 700, fontSize: 13 }}>This feature renders as an interactive card</span>
+        <span style={{ fontSize: 11, color: 'var(--text-2)' }}>(e.g. Elemental Embodiment)</span>
+      </label>
+
+      {f.isCard && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+          {/* Tab placement */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>
+                Appears on tab
+              </label>
+              <select value={f.cardTab ?? 'combat'}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => (patch as (c: object) => void)({ cardTab: e.target.value })}>
+                <option value="combat">Combat</option>
+                <option value="overview">Overview</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>
+                Selection label (optional)
+              </label>
+              <input value={f.cardSelectionLabel ?? ''}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => (patch as (c: object) => void)({ cardSelectionLabel: e.target.value })}
+                placeholder="e.g. Choose an element to embody at the start of a rest." />
+            </div>
+          </div>
+
+          {/* Option source toggle */}
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-2)', marginBottom: 8 }}>
+              Card States / Options
+            </p>
+            <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
+                <input type="radio" checked={!useSource}
+                  onChange={() => (patch as (c: object) => void)({ cardOptionSource: undefined })}
+                  style={{ accentColor: 'var(--accent)' }} />
+                Define states manually
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
+                <input type="radio" checked={useSource}
+                  onChange={() => (patch as (c: object) => void)({ cardOptionSource: { choiceId: '' } })}
+                  style={{ accentColor: 'var(--accent)' }} />
+                Populate from a class choice
+              </label>
+            </div>
+
+            {/* From choice ID */}
+            {useSource && (
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>
+                  Choice ID
+                </label>
+                <input
+                  value={f.cardOptionSource?.choiceId ?? ''}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => (patch as (c: object) => void)({ cardOptionSource: { choiceId: e.target.value } })}
+                  placeholder="e.g. elemental_path" />
+                <p style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 4 }}>
+                  Options will be drawn from whatever values the player has chosen in any class choice with this ID.
+                  Color and icon come from the option definitions on that choice.
+                </p>
+              </div>
+            )}
+
+            {/* Manual states */}
+            {!useSource && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {/* Existing options */}
+                {options.map(opt => (
+                  <div key={opt.id} style={{ background: 'var(--bg-1)', border: '1px solid var(--border)', borderRadius: 6, padding: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                      <span style={{ width: 14, height: 14, borderRadius: '50%', background: opt.color ?? 'var(--accent)', flexShrink: 0, border: '1px solid var(--border)' }} />
+                      <span style={{ fontWeight: 600, fontSize: 13, flex: 1 }}>{opt.icon} {opt.label}</span>
+                      <span style={{ fontSize: 11, color: 'var(--text-2)' }}>id: {opt.id}</span>
+                      <button onClick={() => removeOption(opt.id)} style={{ color: 'var(--accent-2)', fontSize: 16, padding: '0 4px', lineHeight: 1 }}>×</button>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 80px 60px', gap: 6 }}>
+                      <input value={opt.label}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateOption(opt.id, { label: e.target.value })}
+                        placeholder="Label" style={{ fontSize: 12 }} />
+                      <input value={opt.description ?? ''}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateOption(opt.id, { description: e.target.value || undefined })}
+                        placeholder="Description (optional)" style={{ fontSize: 12 }} />
+                      <input type="color" value={opt.color ?? '#61afef'}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateOption(opt.id, { color: e.target.value })}
+                        style={{ height: 32, padding: 2, cursor: 'pointer' }} />
+                      <input value={opt.icon ?? ''}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateOption(opt.id, { icon: e.target.value || undefined })}
+                        placeholder="Icon" style={{ fontSize: 18, textAlign: 'center' }} />
+                    </div>
+                  </div>
+                ))}
+
+                {/* Add new option */}
+                <div style={{ background: 'var(--bg-1)', border: '1px dashed var(--border)', borderRadius: 6, padding: 8 }}>
+                  <p style={{ fontSize: 11, color: 'var(--text-2)', marginBottom: 6 }}>Add state</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr 80px 60px', gap: 6, marginBottom: 6 }}>
+                    <input value={newOptId}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewOptId(e.target.value)}
+                      placeholder="ID (e.g. water)" style={{ fontSize: 12 }} />
+                    <input value={newOptLabel}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewOptLabel(e.target.value)}
+                      placeholder="Label (e.g. Water)" style={{ fontSize: 12 }} />
+                    <input type="color" value={newOptColor}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewOptColor(e.target.value)}
+                      style={{ height: 32, padding: 2, cursor: 'pointer' }} />
+                    <input value={newOptIcon}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewOptIcon(e.target.value)}
+                      placeholder="Icon" style={{ fontSize: 18, textAlign: 'center' }} />
+                  </div>
+                  <button className="btn btn-ghost" style={{ fontSize: 12 }}
+                    onClick={addOption}
+                    disabled={!newOptId.trim() || !newOptLabel.trim()}>
+                    + Add state
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Preview */}
+          {(options.length > 0 || useSource) && (
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+              <p style={{ fontSize: 11, color: 'var(--text-2)', marginBottom: 8 }}>Preview</p>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {useSource ? (
+                  <span style={{ fontSize: 12, color: 'var(--text-2)', fontStyle: 'italic' }}>
+                    Options will appear here at runtime from choice "{f.cardOptionSource?.choiceId}".
+                  </span>
+                ) : options.map(opt => (
+                  <span key={opt.id} style={{
+                    display: 'flex', alignItems: 'center', gap: 5,
+                    padding: '5px 12px', borderRadius: 20, fontSize: 13, fontWeight: 600,
+                    background: opt.color ?? 'var(--accent)', color: '#fff',
+                  }}>
+                    {opt.icon} {opt.label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
