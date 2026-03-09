@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { useUIStore } from '@/store/uiStore';
 import { useItems, useSpells, useClasses, useSubclasses, useFeats, useAllSpecies, useBackgrounds, useFeatures } from '@/hooks/useGameDatabase';
 import { upsertItem, deleteItem, upsertSpell, deleteSpell, upsertClass, deleteClass, upsertFeat, deleteFeat, upsertSpecies, deleteSpecies, upsertBackground, deleteBackground, upsertFeature, deleteFeature, upsertSubclass, deleteSubclass } from '@/db/gameDatabase';
-import { elementalShaperClass } from '@/data/elementalShaper';
-import { theHarmonist } from '@/data/theHarmonist';
+import { elementalShaperClass, elementalShaperFeatures } from '@/data/elementalShaper';
+import { theHarmonist, theHarmonistFeatures } from '@/data/theHarmonist';
 import { SlidePanel } from '@/components/ui/SlidePanel';
 import { ItemForm } from './forms/ItemForm';
 import { SpellForm } from './forms/SpellForm';
@@ -44,9 +44,12 @@ export function DatabaseView() {
   const [seeding, setSeeding] = useState(false);
 
   async function seedElementalShaper() {
-    if (!confirm('Add the Elemental Shaper class to the database?')) return;
+    if (!confirm('Add the Elemental Shaper class and all its features to the database?')) return;
     setSeeding(true);
     try {
+      for (const feature of elementalShaperFeatures) {
+        await upsertFeature(feature);
+      }
       await upsertClass(elementalShaperClass);
       setDatabaseSection('classes');
     } finally {
@@ -55,9 +58,12 @@ export function DatabaseView() {
   }
 
   async function seedBalanceInAllThings() {
-    if (!confirm('Add the Balance in All Things subclass to the database?')) return;
+    if (!confirm('Add The Harmonist subclass and all its features to the database?')) return;
     setSeeding(true);
     try {
+      for (const feature of theHarmonistFeatures) {
+        await upsertFeature(feature);
+      }
       await upsertSubclass(theHarmonist);
       setDatabaseSection('subclasses');
     } finally {
