@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/schema';
-import { createCharacter } from '@/db/characterDatabase';
+import { createCharacter, deleteCharacter } from '@/db/characterDatabase';
 import { useUIStore } from '@/store/uiStore';
 import { useState } from 'react';
 
@@ -62,22 +62,25 @@ export function HomeView() {
           <div
             key={c.id}
             className="card"
-            style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
-            onClick={() => openCharacter(c.id)}
+            style={{ display: 'flex', alignItems: 'center', gap: 12 }}
           >
             <div
+              onClick={() => openCharacter(c.id)}
               style={{
                 width: 44, height: 44, borderRadius: '50%',
                 background: 'var(--bg-3)', display: 'flex',
                 alignItems: 'center', justifyContent: 'center',
-                fontSize: 20, flexShrink: 0,
+                fontSize: 20, flexShrink: 0, cursor: 'pointer',
               }}
             >
               {c.meta.portrait ? (
                 <img src={c.meta.portrait} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
               ) : '🧙'}
             </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
+            <div
+              onClick={() => openCharacter(c.id)}
+              style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}
+            >
               <div style={{ fontWeight: 600, fontSize: 16 }}>{c.meta.name}</div>
               <div style={{ fontSize: 12, color: 'var(--text-2)' }}>
                 {c.classes.length > 0
@@ -89,6 +92,23 @@ export function HomeView() {
             <div style={{ fontSize: 12, color: 'var(--text-2)', flexShrink: 0 }}>
               {new Date(c.meta.updatedAt).toLocaleDateString()}
             </div>
+            <button
+              onClick={async (e) => {
+                e.stopPropagation();
+                if (!confirm(`Delete "${c.meta.name}"? This cannot be undone.`)) return;
+                await deleteCharacter(c.id);
+              }}
+              style={{
+                width: 28, height: 28, borderRadius: '50%',
+                background: 'var(--bg-3)', border: '1px solid var(--border)',
+                color: 'var(--accent-2)', fontSize: 16, lineHeight: 1,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0, cursor: 'pointer',
+              }}
+              title="Delete character"
+            >
+              ×
+            </button>
           </div>
         ))}
 

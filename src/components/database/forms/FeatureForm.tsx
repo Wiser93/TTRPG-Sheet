@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { LabeledInput, LabeledSelect, LabeledTextarea } from '@/components/ui/FormField';
-import type { Feature, ActionType, StatKey } from '@/types/game';
+import type { Feature, ActionType, StatKey, PathTier, Choice } from '@/types/game';
 import { useClasses } from '@/hooks/useGameDatabase';
 import type { ResourceFormulaTerm } from '@/types/character';
 
@@ -96,6 +96,9 @@ export function FeatureForm({ initial, onSave, isSaving }: Props) {
     resourceMin:        initial?.resourceMin        ?? 1,
     combatResource:     initial?.combatResource     ?? false,
     requiresResourceIds:initial?.requiresResourceIds ?? [],
+    // Path fields
+    isPath:             initial?.isPath              ?? false,
+    pathTiers:          (initial?.pathTiers          ?? []) as PathTier[],
     // Card fields
     isCard:             initial?.isCard              ?? false,
     cardTab:            initial?.cardTab             ?? 'combat',
@@ -125,6 +128,9 @@ export function FeatureForm({ initial, onSave, isSaving }: Props) {
       resourceMin:         f.isResource ? (f.resourceMin ?? 1) : undefined,
       combatResource:      f.isResource ? f.combatResource : undefined,
       requiresResourceIds: f.requiresResourceIds?.length ? f.requiresResourceIds : undefined,
+      // Path fields
+      isPath:             f.isPath || undefined,
+      pathTiers:          (f.isPath && f.pathTiers?.length) ? f.pathTiers : undefined,
       // Card fields
       isCard:             f.isCard || undefined,
       cardTab:            f.isCard ? (f.cardTab ?? 'combat') : undefined,
@@ -256,6 +262,8 @@ export function FeatureForm({ initial, onSave, isSaving }: Props) {
       </div>
 
       {/* ── Card Section ─────────────────────────────────── */}
+      <PathSection f={f} patch={patch} />
+
       <CardSection f={f} patch={patch} />
 
       {/* ── Prerequisites / cross-feature links ─────────── */}
@@ -622,6 +630,283 @@ function CardSection({ f, patch }: {
                 ))}
               </div>
             </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Path Section ─────────────────────────────────────────────
+
+function blankTier(tier: number): PathTier {
+  return { tier, name: '', features: [], choices: [] };
+}
+
+function blankTierChoice(): Choice {
+  return { id: '', label: '', type: 'custom_feature', count: 1, options: [] };
+}
+
+function PathSection({ f, patch }: {
+  f: Partial<Feature> & { isPath?: boolean; pathTiers?: PathTier[] };
+  patch: (changes: object) => void;
+}) {
+  const tiers: PathTier[] = f.pathTiers ?? [];
+  const [expandedTier, setExpandedTier] = useState<number | null>(null);
+
+  function patchTier(tier: number, changes: Partial<PathTier>) {
+    patch({ pathTiers: tiers.map(t => t.tier === tier ? { ...t, ...changes } : t) });
+  }
+
+  function addTier() {
+    const next = (tiers[tiers.length - 1]?.tier ?? 0) + 1;
+    if (next > 4) return;
+    patch({ pathTiers: [...tiers, blankTier(next)] });
+    setExpandedTier(next);
+  }
+
+  function removeTier(tier: number) {
+    patch({ pathTiers: tiers.filter(t => t.tier !== tier) });
+  }
+
+  // ── Tier choice editor helpers ───────────────────────────
+  function addChoiceToTier(tier: number) {
+    const t = tiers.find(t2 => t2.tier === tier);
+    if (!t) return;
+    patchTier(tier, { choices: [...(t.choices ?? []), blankTierChoice()] });
+  }
+
+  function patchTierChoice(tier: number, idx: number, changes: Partial<Choice>) {
+    const t = tiers.find(t2 => t2.tier === tier);
+    if (!t) return;
+    const updated = (t.choices ?? []).map((c, i) => i === idx ? { ...c, ...changes } : c);
+    patchTier(tier, { choices: updated });
+  }
+
+  function removeTierChoice(tier: number, idx: number) {
+    const t = tiers.find(t2 => t2.tier === tier);
+    if (!t) return;
+    patchTier(tier, { choices: (t.choices ?? []).filter((_, i) => i !== idx) });
+  }
+
+  // ── Tier choice option helpers ───────────────────────────
+  function addOption(tier: number, choiceIdx: number) {
+    const t = tiers.find(t2 => t2.tier === tier);
+    if (!t) return;
+    const choices = [...(t.choices ?? [])];
+    const choice = { ...choices[choiceIdx] };
+    choice.options = [...(choice.options ?? []), { id: '', label: '', description: '' }];
+    choices[choiceIdx] = choice;
+    patchTier(tier, { choices });
+  }
+
+  function patchOption(tier: number, choiceIdx: number, optIdx: number, changes: object) {
+    const t = tiers.find(t2 => t2.tier === tier);
+    if (!t) return;
+    const choices = [...(t.choices ?? [])];
+    const choice = { ...choices[choiceIdx] };
+    choice.options = (choice.options ?? []).map((o, i) => i === optIdx ? { ...o, ...changes } : o);
+    choices[choiceIdx] = choice;
+    patchTier(tier, { choices });
+  }
+
+  function removeOption(tier: number, choiceIdx: number, optIdx: number) {
+    const t = tiers.find(t2 => t2.tier === tier);
+    if (!t) return;
+    const choices = [...(t.choices ?? [])];
+    const choice = { ...choices[choiceIdx] };
+    choice.options = (choice.options ?? []).filter((_, i) => i !== optIdx);
+    choices[choiceIdx] = choice;
+    patchTier(tier, { choices });
+  }
+
+  return (
+    <div style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 8, padding: 12 }}>
+      {/* Toggle */}
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: f.isPath ? 14 : 0 }}>
+        <input type="checkbox" checked={f.isPath ?? false}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => patch({ isPath: e.target.checked })}
+          style={{ accentColor: 'var(--accent)', width: 15, height: 15 }} />
+        <span style={{ fontWeight: 700, fontSize: 13 }}>This feature is a tiered Elemental Path</span>
+        <span style={{ fontSize: 11, color: 'var(--text-2)' }}>(e.g. Water Path, Earth Path)</span>
+      </label>
+
+      {f.isPath && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <p style={{ fontSize: 12, color: 'var(--text-2)' }}>
+            Define up to 4 tiers. Each tier has a name, boost, recharge trigger, inline features, and augment choices.
+          </p>
+
+          {tiers.map(tier => {
+            const isExpanded = expandedTier === tier.tier;
+            return (
+              <div key={tier.tier} style={{ border: '1px solid var(--border)', borderRadius: 7, overflow: 'hidden' }}>
+                {/* Tier header */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'var(--bg-1)' }}>
+                  <span style={{
+                    width: 22, height: 22, borderRadius: '50%', background: 'var(--accent)',
+                    color: '#fff', fontSize: 12, fontWeight: 700,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                  }}>{tier.tier}</span>
+                  <span style={{ fontWeight: 600, fontSize: 13, flex: 1 }}>
+                    {tier.name || <span style={{ color: 'var(--text-2)', fontStyle: 'italic' }}>Unnamed tier</span>}
+                  </span>
+                  <button className="btn btn-ghost" style={{ fontSize: 11, padding: '2px 8px' }}
+                    onClick={() => setExpandedTier(isExpanded ? null : tier.tier)}>
+                    {isExpanded ? '▲' : '▼'}
+                  </button>
+                  <button onClick={() => removeTier(tier.tier)}
+                    style={{ color: 'var(--accent-2)', fontSize: 16, padding: '0 4px', lineHeight: 1 }}>×</button>
+                </div>
+
+                {isExpanded && (
+                  <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {/* Tier name */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                      <div>
+                        <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 4 }}>
+                          Tier Name
+                        </label>
+                        <input value={tier.name}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => patchTier(tier.tier, { name: e.target.value })}
+                          placeholder="e.g. Stillness, Current, Tide, Ocean" />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 4 }}>
+                          Recharge Trigger
+                        </label>
+                        <input value={tier.rechargeDescription ?? ''}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => patchTier(tier.tier, { rechargeDescription: e.target.value || undefined })}
+                          placeholder="e.g. Use a reaction when attacked" />
+                      </div>
+                    </div>
+
+                    {/* Boost */}
+                    <div>
+                      <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 4 }}>
+                        Boost (upgrade to existing ability)
+                      </label>
+                      <textarea
+                        value={tier.boostDescription ?? ''}
+                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => patchTier(tier.tier, { boostDescription: e.target.value || undefined })}
+                        rows={2}
+                        placeholder="Describe what improves at this tier..."
+                      />
+                    </div>
+
+                    {/* Tier description */}
+                    <div>
+                      <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 4 }}>
+                        Tier Description (optional)
+                      </label>
+                      <textarea
+                        value={tier.description ?? ''}
+                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => patchTier(tier.tier, { description: e.target.value || undefined })}
+                        rows={2}
+                        placeholder="Flavour text for this tier..."
+                      />
+                    </div>
+
+                    {/* Inline features */}
+                    <div>
+                      <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 6 }}>
+                        Inline Features
+                      </label>
+                      {(tier.features ?? []).map((feat, fi) => (
+                        <div key={fi} style={{ border: '1px solid var(--border)', borderRadius: 6, padding: 8, marginBottom: 6 }}>
+                          <div style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
+                            <input value={feat.id}
+                              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                                patchTier(tier.tier, { features: (tier.features ?? []).map((x, i) => i === fi ? { ...x, id: e.target.value } : x) })}
+                              placeholder="Feature ID (e.g. path-water-t1-riptide)" style={{ fontSize: 12, flex: 1 }} />
+                            <button onClick={() =>
+                              patchTier(tier.tier, { features: (tier.features ?? []).filter((_, i) => i !== fi) })}
+                              style={{ color: 'var(--accent-2)', fontSize: 16, padding: '0 4px' }}>×</button>
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 4 }}>
+                            <input value={feat.name}
+                              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                                patchTier(tier.tier, { features: (tier.features ?? []).map((x, i) => i === fi ? { ...x, name: e.target.value } : x) })}
+                              placeholder="Name" style={{ fontSize: 12 }} />
+                            <input value={feat.cost ?? ''}
+                              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                                patchTier(tier.tier, { features: (tier.features ?? []).map((x, i) => i === fi ? { ...x, cost: e.target.value || undefined } : x) })}
+                              placeholder="Cost (e.g. 1 EC)" style={{ fontSize: 12 }} />
+                          </div>
+                          <textarea value={feat.description ?? ''}
+                            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                              patchTier(tier.tier, { features: (tier.features ?? []).map((x, i) => i === fi ? { ...x, description: e.target.value } : x) })}
+                            rows={2} placeholder="Description..." style={{ fontSize: 12 }} />
+                        </div>
+                      ))}
+                      <button className="btn btn-ghost" style={{ fontSize: 12 }}
+                        onClick={() => patchTier(tier.tier, {
+                          features: [...(tier.features ?? []), { id: '', name: '', description: '', actionType: 'action' as const }],
+                        })}>
+                        + Add feature
+                      </button>
+                    </div>
+
+                    {/* Augment choices */}
+                    <div>
+                      <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 6 }}>
+                        Augment Choices
+                      </label>
+                      {(tier.choices ?? []).map((choice, ci) => (
+                        <div key={ci} style={{ border: '1px solid var(--border)', borderRadius: 6, padding: 8, marginBottom: 6 }}>
+                          <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
+                            <input value={choice.id}
+                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => patchTierChoice(tier.tier, ci, { id: e.target.value })}
+                              placeholder="Choice ID" style={{ fontSize: 12, flex: 1 }} />
+                            <input value={choice.label}
+                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => patchTierChoice(tier.tier, ci, { label: e.target.value })}
+                              placeholder="Label (e.g. Water Augment Tier 2)" style={{ fontSize: 12, flex: 2 }} />
+                            <input value={String(choice.count)}
+                              type="number" min={1}
+                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => patchTierChoice(tier.tier, ci, { count: Number(e.target.value) })}
+                              style={{ fontSize: 12, width: 50 }} />
+                            <button onClick={() => removeTierChoice(tier.tier, ci)}
+                              style={{ color: 'var(--accent-2)', fontSize: 16, padding: '0 4px' }}>×</button>
+                          </div>
+
+                          {/* Options */}
+                          {(choice.options ?? []).map((opt, oi) => (
+                            <div key={oi} style={{ display: 'grid', gridTemplateColumns: '120px 1fr 1fr auto', gap: 4, marginBottom: 4 }}>
+                              <input value={opt.id}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => patchOption(tier.tier, ci, oi, { id: e.target.value })}
+                                placeholder="ID" style={{ fontSize: 11 }} />
+                              <input value={opt.label}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => patchOption(tier.tier, ci, oi, { label: e.target.value })}
+                                placeholder="Label" style={{ fontSize: 11 }} />
+                              <input value={opt.description ?? ''}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => patchOption(tier.tier, ci, oi, { description: e.target.value || undefined })}
+                                placeholder="Description" style={{ fontSize: 11 }} />
+                              <button onClick={() => removeOption(tier.tier, ci, oi)}
+                                style={{ color: 'var(--accent-2)', fontSize: 14, padding: '0 4px' }}>×</button>
+                            </div>
+                          ))}
+                          <button className="btn btn-ghost" style={{ fontSize: 11 }}
+                            onClick={() => addOption(tier.tier, ci)}>
+                            + Add option
+                          </button>
+                        </div>
+                      ))}
+                      <button className="btn btn-ghost" style={{ fontSize: 12 }}
+                        onClick={() => addChoiceToTier(tier.tier)}>
+                        + Add augment choice
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {tiers.length < 4 && (
+            <button className="btn btn-ghost" style={{ fontSize: 12, alignSelf: 'flex-start' }}
+              onClick={addTier}>
+              + Add Tier {tiers.length + 1}
+            </button>
           )}
         </div>
       )}
