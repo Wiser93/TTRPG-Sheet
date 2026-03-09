@@ -121,7 +121,7 @@ export function SubclassForm({ initial, onSave, onCancel, isSaving }: Props) {
       </div>
 
       {/* Level entries */}
-      <FormSection label="Level Features">
+      <FormSection title="Level Features">
         <p style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 8 }}>
           Showing levels with content + typical subclass feature levels (3, 6, 7, 10, 11, 14, 15, 18).
         </p>
