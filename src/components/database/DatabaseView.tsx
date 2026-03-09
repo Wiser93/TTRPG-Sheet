@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useUIStore } from '@/store/uiStore';
-import { useItems, useSpells, useClasses, useFeats, useAllSpecies, useBackgrounds, useFeatures } from '@/hooks/useGameDatabase';
-import { upsertItem, deleteItem, upsertSpell, deleteSpell, upsertClass, deleteClass, upsertFeat, deleteFeat, upsertSpecies, deleteSpecies, upsertBackground, deleteBackground, upsertFeature, deleteFeature } from '@/db/gameDatabase';
+import { useItems, useSpells, useClasses, useSubclasses, useFeats, useAllSpecies, useBackgrounds, useFeatures } from '@/hooks/useGameDatabase';
+import { upsertItem, deleteItem, upsertSpell, deleteSpell, upsertClass, deleteClass, upsertFeat, deleteFeat, upsertSpecies, deleteSpecies, upsertBackground, deleteBackground, upsertFeature, deleteFeature, upsertSubclass, deleteSubclass } from '@/db/gameDatabase';
 import { elementalShaperClass } from '@/data/elementalShaper';
+import { theHarmonist } from '@/data/theHarmonist';
 import { SlidePanel } from '@/components/ui/SlidePanel';
 import { ItemForm } from './forms/ItemForm';
 import { SpellForm } from './forms/SpellForm';
@@ -11,9 +12,10 @@ import { FeatForm } from './forms/FeatForm';
 import { SpeciesForm } from './forms/SpeciesForm';
 import { BackgroundForm } from './forms/BackgroundForm';
 import { FeatureForm } from './forms/FeatureForm';
-import type { Item, Spell, GameClass, Feat, Species, Background, Feature } from '@/types/game';
+import { SubclassForm } from './forms/SubclassForm';
+import type { Item, Spell, GameClass, Subclass, Feat, Species, Background, Feature } from '@/types/game';
 
-type SectionKey = 'items' | 'spells' | 'classes' | 'feats' | 'species' | 'backgrounds' | 'features';
+type SectionKey = 'items' | 'spells' | 'classes' | 'subclasses' | 'feats' | 'species' | 'backgrounds' | 'features';
 
 type EditTarget =
   | { type: 'items'; record?: Item }
@@ -22,7 +24,8 @@ type EditTarget =
   | { type: 'feats'; record?: Feat }
   | { type: 'species'; record?: Species }
   | { type: 'backgrounds'; record?: Background }
-  | { type: 'features'; record?: Feature };
+  | { type: 'features'; record?: Feature }
+  | { type: 'subclasses'; record?: Subclass };
 
 export function DatabaseView() {
   const { databaseSection, setDatabaseSection, setView } = useUIStore();
@@ -33,6 +36,7 @@ export function DatabaseView() {
   const species = useAllSpecies();
   const backgrounds = useBackgrounds();
   const features = useFeatures();
+  const subclasses = useSubclasses();
 
   const [editing, setEditing] = useState<EditTarget | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -50,6 +54,17 @@ export function DatabaseView() {
     }
   }
 
+  async function seedBalanceInAllThings() {
+    if (!confirm('Add the Balance in All Things subclass to the database?')) return;
+    setSeeding(true);
+    try {
+      await upsertSubclass(theHarmonist);
+      setDatabaseSection('subclasses');
+    } finally {
+      setSeeding(false);
+    }
+  }
+
   const sections = [
     { key: 'items' as const,       label: 'Items',       icon: '⚔️',  data: items },
     { key: 'spells' as const,      label: 'Spells',      icon: '✨',  data: spells },
@@ -58,6 +73,7 @@ export function DatabaseView() {
     { key: 'species' as const,     label: 'Species',     icon: '🧬',  data: species },
     { key: 'backgrounds' as const, label: 'Backgrounds', icon: '📖',  data: backgrounds },
     { key: 'features' as const,    label: 'Features',    icon: '⚡',  data: features },
+    { key: 'subclasses' as const,  label: 'Subclasses',  icon: '🌀',  data: subclasses },
   ];
 
   const active = sections.find(s => s.key === databaseSection)!;
@@ -76,7 +92,8 @@ export function DatabaseView() {
       else if (editing?.type === 'feats')  await upsertFeat({ ...(data as Omit<Feat,'id'>), id });
       else if (editing?.type === 'species') await upsertSpecies({ ...(data as Omit<Species,'id'>), id });
       else if (editing?.type === 'backgrounds') await upsertBackground({ ...(data as Omit<Background,'id'>), id });
-      else if (editing?.type === 'features') await upsertFeature({ ...(data as Omit<Feature,'id'>), id });
+      else if (editing?.type === 'features')    await upsertFeature({ ...(data as Omit<Feature,'id'>), id });
+      else if (editing?.type === 'subclasses')  await upsertSubclass({ ...(data as Omit<Subclass,'id'>), id });
       setEditing(null);
     } finally {
       setIsSaving(false);
@@ -92,13 +109,14 @@ export function DatabaseView() {
     else if (type === 'features')    await deleteFeature(id);
     else if (type === 'species')     await deleteSpecies(id);
     else if (type === 'backgrounds') await deleteBackground(id);
+    else if (type === 'subclasses')  await deleteSubclass(id);
   }
 
   // ── Panel title ─────────────────────────────────────────────
 
   function panelTitle() {
     const isEdit = !!editing?.record;
-    const labels: Record<SectionKey, string> = { items:'Item', spells:'Spell', classes:'Class', feats:'Feat', species:'Species', backgrounds:'Background', features:'Feature' };
+    const labels: Record<SectionKey, string> = { items:'Item', spells:'Spell', classes:'Class', subclasses:'Subclass', feats:'Feat', species:'Species', backgrounds:'Background', features:'Feature' };
     return `${isEdit ? 'Edit' : 'New'} ${labels[editing?.type ?? 'items']}`;
   }
 
@@ -117,6 +135,17 @@ export function DatabaseView() {
             title="Add the Elemental Shaper as a starter class"
           >
             {seeding ? '…' : '🔥 Add Elemental Shaper'}
+          </button>
+        )}
+        {databaseSection === 'subclasses' && subclasses?.length === 0 && (
+          <button
+            className="btn btn-ghost"
+            style={{ fontSize: 12 }}
+            onClick={seedBalanceInAllThings}
+            disabled={seeding}
+            title="Add The Harmonist as a starter subclass"
+          >
+            {seeding ? '…' : '🌀 Add The Harmonist'}
           </button>
         )}
         <button
@@ -210,6 +239,9 @@ export function DatabaseView() {
         )}
         {editing?.type === 'features' && (
           <FeatureForm initial={editing.record as Partial<Feature>} onSave={handleSave} isSaving={isSaving} />
+        )}
+        {editing?.type === 'subclasses' && (
+          <SubclassForm initial={editing.record as Partial<Subclass>} onSave={handleSave} onCancel={() => setEditing(null)} isSaving={isSaving} />
         )}
       </SlidePanel>
     </div>

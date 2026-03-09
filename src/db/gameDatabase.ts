@@ -197,6 +197,10 @@ export async function upsertSubclass(sc: InsertPayload<DBSubclass> & { id?: stri
   return record.id;
 }
 
+export async function deleteSubclass(id: string): Promise<void> {
+  await db.subclasses.update(id, { deletedAt: new Date().toISOString(), isDirty: true });
+}
+
 // ============================================================
 // STANDALONE FEATURES
 // ============================================================

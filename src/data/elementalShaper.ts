@@ -9,6 +9,7 @@
  */
 
 import type { GameClass } from '@/types/game';
+import { theHarmonist } from './theHarmonist';
 
 export const ELEMENTAL_SHAPER_ID = 'elemental-shaper';
 
@@ -52,7 +53,7 @@ export const elementalShaperClass: Omit<GameClass, 'id'> & { id: string } = {
     prepareFromList: false,
     ritualCasting: false,
   },
-  subclasses: [], // The Harmonist added separately
+  subclasses: [theHarmonist],
 
   levelEntries: [
     // ── Level 1 ─────────────────────────────────────────────

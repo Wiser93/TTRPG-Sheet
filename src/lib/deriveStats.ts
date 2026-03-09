@@ -104,6 +104,14 @@ export function deriveStats(character: Character, gameData: GameData): DerivedSt
           if (levelEntry.level > classEntry.level) break;
           allFeatures.push(...levelEntry.features);
           levelEntry.features.forEach(f => allModifiers.push(...(f.modifiers ?? [])));
+          // Resolve featureRefs for subclass levels (same as class levels)
+          for (const ref of (levelEntry.featureRefs ?? [])) {
+            const dbFeat = gameData.features?.find(f => f.id === ref);
+            if (dbFeat && !allFeatures.some(f => f.id === dbFeat.id)) {
+              allFeatures.push(dbFeat);
+              allModifiers.push(...(dbFeat.modifiers ?? []));
+            }
+          }
         }
       }
     }
@@ -181,6 +189,7 @@ export function deriveStats(character: Character, gameData: GameData): DerivedSt
         for (const levelEntry of sub.levelEntries) {
           if (levelEntry.level > charClass.level) break;
           resolveGrantedFeatures(levelEntry.choices ?? [], charClass.choices);
+          resolveChoiceProfs(levelEntry.choices ?? [], charClass.choices);
         }
       }
     }
