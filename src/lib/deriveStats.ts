@@ -97,6 +97,33 @@ export function deriveStats(character: Character, gameData: GameData): DerivedSt
       }
     }
 
+    // Path features — load features from each unlocked tier
+    if (classEntry.pathProgress) {
+      for (const [pathId, tier] of Object.entries(classEntry.pathProgress)) {
+        const pathFeat = gameData.features?.find(f => f.id === pathId && f.isPath);
+        if (!pathFeat?.pathTiers) continue;
+        // Add the path feature itself once
+        if (!allFeatures.some(f => f.id === pathFeat.id)) {
+          allFeatures.push(pathFeat);
+        }
+        // Add all features from tiers 1..current
+        for (const pt of pathFeat.pathTiers) {
+          if (pt.tier > tier) break;
+          for (const f of pt.features ?? []) {
+            if (!allFeatures.some(x => x.id === f.id)) allFeatures.push(f);
+            allModifiers.push(...(f.modifiers ?? []));
+          }
+          for (const ref of pt.featureRefs ?? []) {
+            const dbFeat = gameData.features?.find(f => f.id === ref);
+            if (dbFeat && !allFeatures.some(f => f.id === dbFeat.id)) {
+              allFeatures.push(dbFeat);
+              allModifiers.push(...(dbFeat.modifiers ?? []));
+            }
+          }
+        }
+      }
+    }
+
     if (classEntry.subclassId) {
       const subclass = gameData.subclasses.find(s => s.id === classEntry.subclassId);
       if (subclass) {

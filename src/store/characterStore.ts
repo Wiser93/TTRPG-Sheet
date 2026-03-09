@@ -76,6 +76,10 @@ interface CharacterStore {
   setHpRoll: (classId: string, level: number, roll: number) => void;
   /** Save a resolved choice (creation or level-up) */
   resolveBuilderChoice: (choice: import('@/types/character').ResolvedChoice, sourceType: 'class' | 'species' | 'background') => void;
+  /** Set or clear the chosen subclass for a class entry */
+  setSubclass: (classId: string, subclassId: string | undefined) => void;
+  /** Advance (or set) a path feature's tier on a class entry */
+  advancePath: (classId: string, pathFeatureId: string, tier: number) => void;
   /** Set all six base stats at once */
   setBaseStats: (stats: import('@/types/character').StatBlock) => void;
   /** Set a single base stat */
@@ -345,6 +349,23 @@ export const useCharacterStore = create<CharacterStore>()(
         existing.roll = roll;
       } else {
         c.hpRolls.push({ classId, level, roll });
+      }
+    }),
+
+    setSubclass: (classId, subclassId) => mutate(set, get, c => {
+      const cls = c.classes.find(e => e.classId === classId);
+      if (!cls) return;
+      cls.subclassId = subclassId;
+    }),
+
+    advancePath: (classId, pathFeatureId, tier) => mutate(set, get, c => {
+      const cls = c.classes.find(e => e.classId === classId);
+      if (!cls) return;
+      if (!cls.pathProgress) cls.pathProgress = {};
+      if (tier <= 0) {
+        delete cls.pathProgress[pathFeatureId];
+      } else {
+        cls.pathProgress[pathFeatureId] = tier;
       }
     }),
 

@@ -1,5 +1,5 @@
 import { useCharacterStore } from '@/store/characterStore';
-import { useClasses } from '@/hooks/useGameDatabase';
+import { useClasses, useFeatures } from '@/hooks/useGameDatabase';
 import type { Feature } from '@/types/game';
 import type { DBClass } from '@/db/schema';
 
@@ -14,20 +14,42 @@ export type CardOption = {
 export function useFeatureCardOptions(feature: Feature): CardOption[] {
   const maybeCharacter = useCharacterStore(s => s.character);
   const allClasses = (useClasses() ?? []) as DBClass[];
+  const allDbFeatures = useFeatures() ?? [];
 
-  // Static options — no character needed
   if (!feature.isCard) return [];
   if (feature.cardOptions?.length) return feature.cardOptions;
   if (!feature.cardOptionSource) return [];
 
-  // Early-return before any character access
   if (maybeCharacter === null || maybeCharacter === undefined) return [];
-  // Local non-nullable alias — TypeScript will definitely track this as non-null
   const char = maybeCharacter;
 
-  const { choiceId } = feature.cardOptionSource;
+  // ── Path-based options (from pathProgress) ──────────────────
+  // If cardOptionSource has pathBased:true, read from pathProgress
+  const src = feature.cardOptionSource as { choiceId?: string; pathBased?: boolean };
 
-  // 1. Collect unique option IDs selected across all resolved choices
+  if (src.pathBased) {
+    const options: CardOption[] = [];
+    for (const classEntry of char.classes) {
+      for (const [pathId, _tier] of Object.entries(classEntry.pathProgress ?? {})) {
+        // Look up the path feature for display metadata
+        const pathFeat = allDbFeatures.find(f => f.id === pathId && f.isPath);
+        if (!pathFeat) continue;
+        if (options.some(o => o.id === pathId)) continue;
+        options.push({
+          id: pathId,
+          label: pathFeat.name.replace(' Path', ''),
+          description: pathFeat.description,
+          color: (pathFeat as Feature & { color?: string }).color,
+          icon: (pathFeat as Feature & { icon?: string }).icon,
+        });
+      }
+    }
+    return options;
+  }
+
+  // ── Choice-based options (from resolved choice selections) ───
+  const { choiceId } = src as { choiceId: string };
+
   const selectedIds: string[] = [];
   const seen = new Set<string>();
 
@@ -45,7 +67,7 @@ export function useFeatureCardOptions(feature: Feature): CardOption[] {
 
   if (selectedIds.length === 0) return [];
 
-  // 2. Enrich with display metadata from DB class definitions
+  // Enrich with display metadata from DB class definitions
   const optMeta: Record<string, Omit<CardOption, 'id'>> = {};
   for (const cls of allClasses) {
     for (const level of cls.levelEntries ?? []) {
@@ -78,7 +100,6 @@ export function useFeatureCardOptions(feature: Feature): CardOption[] {
     }
   }
 
-  // 3. Build final list — use DB metadata where available
   return selectedIds.map(id => {
     const meta = optMeta[id];
     const rawLabel = meta?.label ?? id;

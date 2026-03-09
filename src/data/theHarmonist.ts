@@ -84,7 +84,7 @@ export const featureCoreOfTheSpiral: Feature = {
   isCard: true,
   cardTab: 'combat',
   cardSelectionLabel: 'Choose a Spiral element at the start of your turn.',
-  cardOptionSource: { choiceId: 'elemental_path' },
+  cardOptionSource: { pathBased: true } as unknown as { choiceId: string },
 };
 
 // ── All features — seed this array to the Features DB table ───
@@ -114,16 +114,12 @@ export const theHarmonist: Subclass = {
       featureRefs: [featureBalanceInAllThings.id],
       choices: [
         {
-          id: 'elemental_path',
-          label: 'Elemental Path — Harmonist Choice (3rd)',
-          type: 'custom_feature',
+          id: 'elemental_path_harmonist_3',
+          label: 'Elemental Path — Harmonist (3rd)',
+          type: 'path_advance',
           count: 1,
-          options: [
-            { id: 'water', label: 'Water — Stillness (Tier 1)', description: 'Riptide Step, Flowing Form. Recharge: reaction used when attacked.', color: '#61afef', icon: '💧' },
-            { id: 'earth', label: 'Earth — Rooted (Tier 1)',    description: "Earthen Grasp, Stone's Endurance. Recharge: no movement on turn.", color: '#e5c07b', icon: '🪨' },
-            { id: 'fire',  label: 'Fire — The Flame Within (Tier 1)', description: 'Flame Lash, Kindled Motion. Recharge: reduce enemy to 0 HP with Fire.', color: '#e06c75', icon: '🔥' },
-            { id: 'air',   label: 'Air — Whisper (Tier 1)',     description: 'Cyclone Palm, Whisperstep. Recharge: move 20ft unharmed.', color: '#98c379', icon: '💨' },
-          ],
+          pathFeatureIds: ['path-water', 'path-earth', 'path-fire', 'path-air'],
+          // Harmonist restriction: max tier 1 on all paths except first; max tier 2 overall
         },
       ],
     },

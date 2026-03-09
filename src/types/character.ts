@@ -41,6 +41,12 @@ export interface CharacterClassEntry {
   subclassId?: string;
   /** All choices made for this class (level features, subclass, etc.) */
   choices: ResolvedChoice[];
+  /**
+   * Tracks progression in path-type features.
+   * Key = path feature ID (e.g. 'path-water'), value = current tier (1–4).
+   * e.g. { 'path-water': 2, 'path-earth': 1 }
+   */
+  pathProgress?: Record<string, number>;
 }
 
 // ============================================================

@@ -8,6 +8,7 @@
  */
 
 import type { GameClass, Feature } from '@/types/game';
+import { elementalPathFeatures, ELEMENTAL_PATH_IDS } from './elementalPaths';
 import { theHarmonist } from './theHarmonist';
 
 export const ELEMENTAL_SHAPER_ID = 'elemental-shaper';
@@ -55,7 +56,7 @@ export const featureElementalEmbodiment: Feature = {
   isCard: true,
   cardTab: 'combat',
   cardSelectionLabel: 'Choose an element to embody at the start of a rest.',
-  cardOptionSource: { choiceId: 'elemental_path' },
+  cardOptionSource: { pathBased: true } as unknown as { choiceId: string },
 };
 
 // ── Level 3 ───────────────────────────────────────────────────
@@ -185,7 +186,7 @@ export const featureElementalResonance: Feature = {
   isCard: true,
   cardTab: 'combat',
   cardSelectionLabel: 'Track which element you used last round.',
-  cardOptionSource: { choiceId: 'elemental_path' },
+  cardOptionSource: { pathBased: true } as unknown as { choiceId: string },
 };
 
 // ── Level 14 ──────────────────────────────────────────────────
@@ -268,6 +269,7 @@ export const featureAvatarForm: Feature = {
 // ── All features — seed this array to the Features DB table ───
 
 export const elementalShaperFeatures: Feature[] = [
+  ...elementalPathFeatures,
   featureElementalCharges,
   featureElementalEmbodiment,
   featureSubclassL3,
@@ -338,16 +340,11 @@ export const elementalShaperClass: Omit<GameClass, 'id'> & { id: string } = {
       featureRefs: [featureElementalCharges.id],
       choices: [
         {
-          id: 'elemental_path',
+          id: 'elemental_path_1',
           label: 'Elemental Path (1st)',
-          type: 'custom_feature',
+          type: 'path_advance',
           count: 1,
-          options: [
-            { id: 'water', label: 'Water — Stillness (Tier 1)', description: 'Riptide Step, Flowing Form. Recharge: reaction used when attacked.', color: '#61afef', icon: '💧' },
-            { id: 'earth', label: 'Earth — Rooted (Tier 1)',    description: "Earthen Grasp, Stone's Endurance. Recharge: no movement on turn.", color: '#e5c07b', icon: '🪨' },
-            { id: 'fire',  label: 'Fire — The Flame Within (Tier 1)', description: 'Flame Lash, Kindled Motion. Recharge: reduce enemy to 0 HP with Fire.', color: '#e06c75', icon: '🔥' },
-            { id: 'air',   label: 'Air — Whisper (Tier 1)',     description: 'Cyclone Palm, Whisperstep. Recharge: move 20ft unharmed.', color: '#98c379', icon: '💨' },
-          ],
+          pathFeatureIds: Object.values(ELEMENTAL_PATH_IDS),
         },
       ],
     },
@@ -376,16 +373,11 @@ export const elementalShaperClass: Omit<GameClass, 'id'> & { id: string } = {
       featureRefs: [featureExtraAttack.id],
       choices: [
         {
-          id: 'elemental_path',
+          id: 'elemental_path_2',
           label: 'Elemental Path (2nd)',
-          type: 'custom_feature',
+          type: 'path_advance',
           count: 1,
-          options: [
-            { id: 'water', label: 'Water — Current (Tier 2) or Stillness (Tier 1)', description: 'If already Water: Current tier 2 boost + 1 Water Augment. Otherwise: Stillness tier 1.' },
-            { id: 'earth', label: 'Earth — Mantle (Tier 2) or Rooted (Tier 1)' },
-            { id: 'fire',  label: 'Fire — Kindling (Tier 2) or The Flame Within (Tier 1)' },
-            { id: 'air',   label: 'Air — Gale (Tier 2) or Whisper (Tier 1)' },
-          ],
+          pathFeatureIds: Object.values(ELEMENTAL_PATH_IDS),
         },
       ],
     },
@@ -419,16 +411,11 @@ export const elementalShaperClass: Omit<GameClass, 'id'> & { id: string } = {
       features: [],
       choices: [
         {
-          id: 'elemental_path',
+          id: 'elemental_path_3',
           label: 'Elemental Path (3rd)',
-          type: 'custom_feature',
+          type: 'path_advance',
           count: 1,
-          options: [
-            { id: 'water', label: 'Water — next tier' },
-            { id: 'earth', label: 'Earth — next tier' },
-            { id: 'fire',  label: 'Fire — next tier' },
-            { id: 'air',   label: 'Air — next tier' },
-          ],
+          pathFeatureIds: Object.values(ELEMENTAL_PATH_IDS),
         },
       ],
     },
@@ -462,16 +449,11 @@ export const elementalShaperClass: Omit<GameClass, 'id'> & { id: string } = {
       features: [],
       choices: [
         {
-          id: 'elemental_path',
+          id: 'elemental_path_4',
           label: 'Elemental Path (Final)',
-          type: 'custom_feature',
+          type: 'path_advance',
           count: 1,
-          options: [
-            { id: 'water', label: 'Water — final tier' },
-            { id: 'earth', label: 'Earth — final tier' },
-            { id: 'fire',  label: 'Fire — final tier' },
-            { id: 'air',   label: 'Air — final tier' },
-          ],
+          pathFeatureIds: Object.values(ELEMENTAL_PATH_IDS),
         },
       ],
     },

@@ -51,7 +51,8 @@ export type ChoiceType =
   | 'feat'
   | 'subclass'
   | 'spell_known'
-  | 'custom_feature';
+  | 'custom_feature'
+  | 'path_advance';
 
 export interface ChoiceOption {
   id: string;
@@ -107,11 +108,35 @@ export interface Choice {
    * Overrides static `options` if both are present.
    */
   dbSource?: ChoiceDbSource;
+  /** For type='path_advance': IDs of path Features the player may advance */
+  pathFeatureIds?: string[];
 }
 
 // ============================================================
 // FEATURE
 // ============================================================
+
+// ============================================================
+// ELEMENTAL PATH TIERS
+// ============================================================
+
+export interface PathTier {
+  tier: number;
+  /** Display name for this tier, e.g. "Stillness", "Current", "Tide", "Ocean" */
+  name: string;
+  /** Description of what this tier unlocks */
+  description?: string;
+  /** Text describing the recharge trigger for this element */
+  rechargeDescription?: string;
+  /** Text describing the Boost granted at this tier */
+  boostDescription?: string;
+  /** Inline features granted at this tier */
+  features?: Feature[];
+  /** IDs of standalone DB features linked at this tier */
+  featureRefs?: string[];
+  /** Choices presented when reaching this tier (e.g. pick an Augment) */
+  choices?: Choice[];
+}
 
 /** How the feature is used in combat — drives the Combat tab grouping */
 export type ActionType = 'action' | 'bonus_action' | 'reaction' | 'passive';
@@ -212,6 +237,21 @@ export interface Feature {
     color?: string;
     icon?: string;
   }>;
+
+  // ── Display ─────────────────────────────────────────────────
+  /** Accent color for display (hex string, e.g. '#61afef') */
+  color?: string;
+  /** Emoji or short icon string for display */
+  icon?: string;
+
+  // ── Elemental Path ──────────────────────────────────────────
+  /** If true, this feature is an Elemental Path with tiered progression */
+  isPath?: boolean;
+  /**
+   * Tier definitions for elemental path features.
+   * Each tier (1–4) has its own name, boost, features, and augment choices.
+   */
+  pathTiers?: PathTier[];
 }
 
 // ============================================================
