@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useFeatures } from '@/hooks/useGameDatabase';
 import type { GameClass, StatKey, SkillKey, ClassLevelEntry, Feature, SpellcastingConfig, Choice } from '@/types/game';
 import { LabeledInput, LabeledSelect, LabeledTextarea, FormRow, FormSection } from '@/components/ui/FormField';
@@ -53,6 +53,17 @@ export function ClassForm({ initial, onSave, onCancel, isSaving }: ClassFormProp
 
   const [expandedLevel, setExpandedLevel] = useState<number | null>(null);
   const [hasSpellcasting, setHasSpellcasting] = useState(!!initial?.spellcasting);
+
+  // Re-sync if initial changes (e.g. DB record arrives after mount)
+  useEffect(() => {
+    if (!initial) return;
+    const existing = initial.levelEntries ?? [];
+    const levelEntries = Array.from({ length: 20 }, (_, i) =>
+      existing.find(e => e.level === i + 1) ?? blankLevel(i + 1)
+    );
+    setCls({ ...blankClass(), ...initial, levelEntries });
+    setHasSpellcasting(!!initial.spellcasting);
+  }, [initial?.id]);
 
   const patch = (changes: Partial<GameClass>) => setCls(prev => ({ ...prev, ...changes }));
   const sc = cls.spellcasting;
@@ -206,7 +217,7 @@ export function ClassForm({ initial, onSave, onCancel, isSaving }: ClassFormProp
         <p style={{ fontSize: 12, color: 'var(--text-2)' }}>Click a level to add features and choices granted at that level.</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {levelEntries.map(entry => {
-            const hasFeatures = entry.features.length > 0;
+            const hasFeatures = entry.features.length > 0 || (entry.featureRefs?.length ?? 0) > 0 || (entry.choices?.length ?? 0) > 0;
             const isOpen = expandedLevel === entry.level;
             return (
               <div key={entry.level} style={{ border: `1px solid ${hasFeatures ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 6, overflow: 'hidden' }}>
@@ -219,14 +230,31 @@ export function ClassForm({ initial, onSave, onCancel, isSaving }: ClassFormProp
                   }}
                 >
                   <span style={{ fontWeight: hasFeatures ? 600 : 400 }}>Level {entry.level}</span>
-                  <span style={{ fontSize: 12, color: hasFeatures ? 'var(--accent)' : 'var(--text-2)' }}>
-                    {hasFeatures ? `${entry.features.length} feature${entry.features.length !== 1 ? 's' : ''}` : 'No features'} {isOpen ? '▲' : '▼'}
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+                    {(() => {
+                      const featCount = (entry.features?.length ?? 0) + (entry.featureRefs?.length ?? 0);
+                      const choiceCount = entry.choices?.length ?? 0;
+                      return (<>
+                        {featCount > 0 && (
+                          <span style={{ background: 'var(--bg-3)', borderRadius: 4, padding: '1px 6px', color: 'var(--text-1)' }}>
+                            {featCount} feature{featCount !== 1 ? 's' : ''}
+                          </span>
+                        )}
+                        {choiceCount > 0 && (
+                          <span style={{ background: 'color-mix(in srgb, var(--accent) 15%, var(--bg-3))', borderRadius: 4, padding: '1px 6px', color: 'var(--accent)' }}>
+                            {choiceCount} choice{choiceCount !== 1 ? 's' : ''}
+                          </span>
+                        )}
+                        {featCount === 0 && choiceCount === 0 && (
+                          <span style={{ color: 'var(--text-2)' }}>Empty</span>
+                        )}
+                        <span style={{ color: 'var(--text-2)' }}>{isOpen ? '▲' : '▼'}</span>
+                      </>);
+                    })()}
                   </span>
                 </button>
                 {isOpen && (
                   <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    <FeatureEditor features={entry.features}
-                      onChange={(features: Feature[]) => updateLevel(entry.level, features)} />
                     <FeatureRefPicker
                       refs={entry.featureRefs ?? []}
                       onChange={(refs) => updateLevelFeatureRefs(entry.level, refs)}
@@ -239,6 +267,16 @@ export function ClassForm({ initial, onSave, onCancel, isSaving }: ClassFormProp
                         choices={entry.choices ?? []}
                         onChange={(choices: Choice[]) => updateLevelChoices(entry.level, choices)}
                       />
+                    </div>
+                    <div>
+                      <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-2)', marginBottom: 8 }}>
+                        Inline Features
+                        <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-2)', textTransform: 'none', marginLeft: 6 }}>
+                          — define custom features directly on this level (use Linked DB Features above for existing ones)
+                        </span>
+                      </p>
+                      <FeatureEditor features={entry.features}
+                        onChange={(features: Feature[]) => updateLevel(entry.level, features)} />
                     </div>
                   </div>
                 )}

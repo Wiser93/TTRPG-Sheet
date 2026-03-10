@@ -124,6 +124,13 @@ export function useDbSourceOptions(source: import('@/types/game').ChoiceDbSource
           ].filter(Boolean).join(' · '),
         }));
     }
+    if (entity === 'subclasses') {
+      const all = await live(db.subclasses).sortBy('name');
+      const parentId = source?.parentClassId;
+      return all
+        .filter(s => !parentId || s.parentClassId === parentId)
+        .map(s => ({ id: s.id, name: s.name, description: s.description }));
+    }
     return [];
   }, [entity, tag, category]);
 }

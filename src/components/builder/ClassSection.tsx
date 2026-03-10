@@ -74,7 +74,7 @@ function getSubclassLevels(cls: GameClass): number[] {
   const levels: number[] = [];
   for (const le of cls.levelEntries) {
     const hasSubclassChoice =
-      (le.choices ?? []).some(ch => ch.type === 'subclass') ||
+      (le.choices ?? []).some(ch => ch.type === 'subclass' || ch.dbSource?.entity === 'subclasses') ||
       le.features.some(f => f.tags?.includes('subclass')) ||
       (le.featureRefs ?? []).some(id => id.match(/^l\d+-?subclass$/));
     if (hasSubclassChoice) levels.push(le.level);
@@ -356,11 +356,11 @@ function LevelBlock({
             <FeatureBlock key={f.id} feature={f} />
           ))}
 
-          {/* Choices */}
+          {/* Choices — subclass handled by SubclassPicker; tiered feature choices by TieredFeaturePicker */}
           {choices.map(choice => {
             if (choice.type === 'path_advance') {
               return (
-                <PathAdvancePicker
+                <TieredFeaturePicker
                   key={choice.id}
                   choice={choice}
                   classId={cls.id}
@@ -369,6 +369,10 @@ function LevelBlock({
                   cls={cls}
                 />
               );
+            }
+            // Subclass choices are handled by SubclassPicker rendered above
+            if (choice.type === 'subclass' || choice.dbSource?.entity === 'subclasses') {
+              return null;
             }
             return (
               <ChoicePicker
@@ -636,7 +640,7 @@ function ClassPicker({ allClasses, existingClassIds, onPick, onCancel }: {
 
 // ── Path Advance Picker ────────────────────────────────────────
 
-function PathAdvancePicker({ choice, classId, entry, allDbFeatures, cls }: {
+function TieredFeaturePicker({ choice, classId, entry, allDbFeatures, cls }: {
   choice: import('@/types/game').Choice;
   classId: string;
   entry: CharacterClassEntry;
@@ -666,7 +670,7 @@ function PathAdvancePicker({ choice, classId, entry, allDbFeatures, cls }: {
           {choice.label}
         </div>
         <div style={{ fontSize: 12, color: 'var(--text-2)' }}>
-          Select a path to advance. Known paths show their current tier; new paths start at Tier 1.
+          Select a tiered feature to advance. Known paths show their current tier; new ones start at Tier 1.
         </div>
       </div>
 

@@ -84,13 +84,19 @@ export interface ChoiceOption {
  * The selected ids are stored in ResolvedChoice.selectedValues as usual.
  */
 export interface ChoiceDbSource {
-  entity: 'items' | 'spells' | 'feats' | 'features';
+  entity: 'items' | 'spells' | 'feats' | 'features' | 'subclasses';
   /** Only include records whose tags array contains this value */
   filterTag?: string;
   /** Only include items whose category matches (items only) */
   filterCategory?: string;
   /** How the selected value should be interpreted for character proficiencies */
   grantsType?: 'weapon_proficiency' | 'armor_proficiency' | 'tool_proficiency' | 'language';
+  /**
+   * For entity: 'subclasses' — only show subclasses linked to this class ID.
+   * Populated automatically at runtime from context.sourceId; set to a fixed
+   * value if you want to hard-wire a specific parent class.
+   */
+  parentClassId?: string;
 }
 
 export interface Choice {

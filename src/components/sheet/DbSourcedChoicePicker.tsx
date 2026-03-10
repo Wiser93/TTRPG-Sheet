@@ -30,7 +30,11 @@ interface Props {
 }
 
 export function DbSourcedChoicePicker({ choice, resolved, onChange, readOnly, context }: Props) {
-  const options = useDbSourceOptions(choice.dbSource);
+  // For subclass choices, inject the class ID so options are filtered to this class's subclasses
+  const effectiveSource = (choice.dbSource?.entity === 'subclasses' && context.sourceType === 'class')
+    ? { ...choice.dbSource, parentClassId: choice.dbSource.parentClassId ?? context.sourceId }
+    : choice.dbSource;
+  const options = useDbSourceOptions(effectiveSource);
   const selected = resolved?.selectedValues ?? [];
   const isLoading = options === undefined;
   const isEmpty = !isLoading && options?.length === 0;
