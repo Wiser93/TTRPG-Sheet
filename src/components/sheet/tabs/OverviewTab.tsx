@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useCharacterStore } from '@/store/characterStore';
 import { useBackgrounds, useAllSpecies } from '@/hooks/useGameDatabase';
 import { useFeatureCardOptions } from '@/hooks/useFeatureCardOptions';
@@ -39,7 +40,29 @@ function sign(n: number) { return n >= 0 ? `+${n}` : `${n}`; }
 interface Props { character: Character; derived: DerivedStats; }
 
 export function OverviewTab({ character, derived }: Props) {
-  const { setCurrentHP, shortRest, longRest, setFeatureCardState } = useCharacterStore();
+  const { setCurrentHP, shortRest, longRest, setFeatureCardState, setInspiration } = useCharacterStore();
+  const [restReminder, setRestReminder] = useState<{ type: 'short' | 'long'; features: Feature[] } | null>(null);
+
+  function handleShortRest() {
+    const triggered = derived.allFeatures.filter(f => {
+      const t = (f.trigger ?? '').toLowerCase();
+      return t.includes('short rest') || t === 'short_rest';
+    });
+    shortRest(0);
+    if (triggered.length > 0) setRestReminder({ type: 'short', features: triggered });
+  }
+
+  function handleLongRest() {
+    const triggered = derived.allFeatures.filter(f => {
+      const t = (f.trigger ?? '').toLowerCase();
+      return t.includes('long rest') || t === 'long_rest' || t.includes('rest');
+    });
+    // Check for grantHeroicInspiration features
+    const grantsInspiration = derived.allFeatures.some(f => f.grantHeroicInspiration === 'long_rest');
+    longRest(grantsInspiration);
+    if (triggered.length > 0) setRestReminder({ type: 'long', features: triggered });
+  }
+
   const allSpecies    = useAllSpecies()   ?? [];
   const allBackgrounds = useBackgrounds() ?? [];
   const species    = allSpecies.find(s => s.id === character.speciesId);
@@ -77,14 +100,14 @@ export function OverviewTab({ character, derived }: Props) {
             <button
               className="btn btn-ghost"
               style={{ fontSize: 11, padding: '3px 10px' }}
-              onClick={() => shortRest(0)}
+              onClick={handleShortRest}
             >
               Short Rest
             </button>
             <button
               className="btn btn-ghost"
               style={{ fontSize: 11, padding: '3px 10px' }}
-              onClick={longRest}
+              onClick={handleLongRest}
             >
               Long Rest
             </button>
@@ -189,6 +212,103 @@ export function OverviewTab({ character, derived }: Props) {
           })}
         </div>
       </div>
+
+      {/* Heroic Inspiration */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '10px 14px',
+        background: character.combat.inspiration
+          ? 'color-mix(in srgb, var(--accent) 12%, var(--bg-1))'
+          : 'var(--bg-1)',
+        border: `1px solid ${character.combat.inspiration ? 'var(--accent)' : 'var(--border)'}`,
+        borderRadius: 8,
+        transition: 'all 200ms ease',
+        cursor: 'pointer',
+      }}
+        onClick={() => setInspiration(!character.combat.inspiration)}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 22 }}>{character.combat.inspiration ? '✨' : '💫'}</span>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: character.combat.inspiration ? 'var(--accent)' : 'var(--text-1)' }}>
+              Heroic Inspiration
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-2)' }}>
+              {character.combat.inspiration ? 'Active — reroll one d20 test' : 'Tap to mark as active'}
+            </div>
+          </div>
+        </div>
+        <div style={{
+          width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+          background: character.combat.inspiration ? 'var(--accent)' : 'var(--bg-3)',
+          border: `2px solid ${character.combat.inspiration ? 'var(--accent)' : 'var(--border)'}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 14,
+        }}>
+          {character.combat.inspiration ? '✓' : ''}
+        </div>
+      </div>
+
+      {/* Rest reminder modal */}
+      {restReminder && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
+          display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+          zIndex: 1000, padding: 16,
+        }}
+          onClick={() => setRestReminder(null)}
+        >
+          <div style={{
+            background: 'var(--bg-1)', borderRadius: 16, padding: 20,
+            width: '100%', maxWidth: 480, maxHeight: '60dvh', overflowY: 'auto',
+            boxShadow: '0 -4px 40px rgba(0,0,0,0.4)',
+          }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <div>
+                <p style={{ fontSize: 15, fontWeight: 700 }}>
+                  {restReminder.type === 'long' ? '🌙 Long Rest' : '☕ Short Rest'} — Reminders
+                </p>
+                <p style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>
+                  The following features trigger on this rest.
+                </p>
+              </div>
+              <button onClick={() => setRestReminder(null)}
+                style={{ fontSize: 22, color: 'var(--text-2)', lineHeight: 1, padding: '0 4px' }}>×</button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {restReminder.features.map(f => (
+                <div key={f.id} style={{
+                  background: 'var(--bg-2)', borderRadius: 8, padding: '10px 14px',
+                  borderLeft: '3px solid var(--accent)',
+                }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>{f.name}</div>
+                  {f.effect && (
+                    <div style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 600, marginBottom: 4 }}>
+                      ⚡ {f.effect}
+                    </div>
+                  )}
+                  {f.grantHeroicInspiration && (
+                    <div style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 600, marginBottom: 4 }}>
+                      ✨ Heroic Inspiration granted
+                    </div>
+                  )}
+                  {f.description && (
+                    <div style={{ fontSize: 12, color: 'var(--text-2)', lineHeight: 1.5 }}>{f.description}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <button className="btn btn-primary" style={{ width: '100%', marginTop: 16 }}
+              onClick={() => setRestReminder(null)}>
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Overview feature cards */}
       {overviewCards.map(f => (

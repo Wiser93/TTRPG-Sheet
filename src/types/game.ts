@@ -167,6 +167,11 @@ export interface Feature {
   trigger?: string;
   /** What the feature does in plain language (e.g. "Gain Heroic Inspiration") */
   effect?: string;
+  /**
+   * If true, this feature automatically grants Heroic Inspiration when its
+   * trigger fires. Currently supports trigger='long_rest'.
+   */
+  grantHeroicInspiration?: 'long_rest' | 'short_rest';
   /** Choices the player must make when gaining this feature */
   choices?: Choice[];
   /** E.g. uses per short/long rest */
@@ -336,6 +341,8 @@ export interface Species {
   /** DB Spell IDs granted as innate spells */
   innateSpellIds?: string[];
   /** Choices made at character creation for this species */
+  /** DB Feature IDs automatically granted by this species (not a choice) */
+  featureRefs?: string[];
   creationChoices?: Choice[];
   customFields?: Record<string, unknown>;
 }

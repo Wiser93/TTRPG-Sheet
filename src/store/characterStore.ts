@@ -60,7 +60,7 @@ interface CharacterStore {
 
   // ── Rests ──────────────────────────────────────────────────
   shortRest: (hitDieResults: number) => void;
-  longRest: () => void;
+  longRest: (grantInspiration?: boolean) => void;
 
   // ── Inspiration ────────────────────────────────────────────
   setInspiration: (value: boolean) => void;
@@ -286,7 +286,7 @@ export const useCharacterStore = create<CharacterStore>()(
         .filter(r => r.rechargeOn === 'short_rest')
         .forEach(r => { r.current = r.max; });
     }),
-    longRest: () => mutate(set, get, c => {
+    longRest: (grantInspiration = false) => mutate(set, get, c => {
       c.health.current = c.health.max;
       c.health.temp = 0;
       c.health.deathSaves = { successes: 0, failures: 0 };
@@ -296,6 +296,8 @@ export const useCharacterStore = create<CharacterStore>()(
       c.resources
         .filter(r => r.rechargeOn === 'short_rest' || r.rechargeOn === 'long_rest')
         .forEach(r => { r.current = r.max; });
+      // Auto-grant Heroic Inspiration from features (e.g. Resourceful)
+      if (grantInspiration) c.combat.inspiration = true;
       // Clear rest-duration embodiment
       c.featureCardStates = {};
     }),

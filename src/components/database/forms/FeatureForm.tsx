@@ -85,6 +85,7 @@ export function FeatureForm({ initial, onSave, isSaving }: Props) {
     tags:               initial?.tags               ?? [],
     trigger:            initial?.trigger,
     effect:             initial?.effect,
+    grantHeroicInspiration: initial?.grantHeroicInspiration,
     sourceType:         initial?.sourceType,
     sourceId:           initial?.sourceId           ?? '',
     uses:               initial?.uses,
@@ -117,6 +118,7 @@ export function FeatureForm({ initial, onSave, isSaving }: Props) {
       ...f,
       trigger:             f.trigger?.trim()      || undefined,
       effect:              f.effect?.trim()       || undefined,
+      grantHeroicInspiration: (f as {grantHeroicInspiration?: string}).grantHeroicInspiration || undefined,
       cost:                f.cost?.trim()         || undefined,
       sourceId:            f.sourceId?.trim()     || undefined,
       sourceType:          f.sourceType           || undefined,
@@ -166,6 +168,25 @@ export function FeatureForm({ initial, onSave, isSaving }: Props) {
         <LabeledInput label="Effect (optional)" value={f.effect ?? ''}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => patch({ effect: e.target.value || undefined })}
           placeholder="e.g. Gain Heroic Inspiration" />
+      </div>
+
+      {/* Grant Heroic Inspiration automation */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: 'var(--bg-2)', borderRadius: 6 }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
+          <input type="checkbox"
+            checked={!!(f as {grantHeroicInspiration?: string}).grantHeroicInspiration}
+            onChange={e => (patch as (c: object) => void)({ grantHeroicInspiration: e.target.checked ? 'long_rest' : undefined })}
+            style={{ accentColor: 'var(--accent)' }} />
+          <span>Automatically grant Heroic Inspiration</span>
+        </label>
+        {!!(f as {grantHeroicInspiration?: string}).grantHeroicInspiration && (
+          <select value={(f as {grantHeroicInspiration?: string}).grantHeroicInspiration}
+            onChange={e => (patch as (c: object) => void)({ grantHeroicInspiration: e.target.value })}
+            style={{ fontSize: 12, flex: 1 }}>
+            <option value="long_rest">on Long Rest</option>
+            <option value="short_rest">on Short Rest</option>
+          </select>
+        )}
       </div>
 
       <LabeledTextarea label="Description" value={f.description} rows={4}

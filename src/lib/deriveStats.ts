@@ -67,6 +67,14 @@ export function deriveStats(character: Character, gameData: GameData): DerivedSt
     if (species) {
       allFeatures.push(...species.features);
       species.features.forEach(f => allModifiers.push(...(f.modifiers ?? [])));
+      // Resolve DB feature refs granted automatically by the species
+      for (const ref of species.featureRefs ?? []) {
+        const dbFeat = gameData.features?.find(f => f.id === ref);
+        if (dbFeat && !allFeatures.some(f => f.id === dbFeat.id)) {
+          allFeatures.push(dbFeat);
+          allModifiers.push(...(dbFeat.modifiers ?? []));
+        }
+      }
     }
   }
 
