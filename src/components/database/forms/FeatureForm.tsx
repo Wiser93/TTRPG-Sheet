@@ -118,7 +118,7 @@ export function FeatureForm({ initial, onSave, isSaving }: Props) {
       ...f,
       trigger:             f.trigger?.trim()      || undefined,
       effect:              f.effect?.trim()       || undefined,
-      grantHeroicInspiration: (f as {grantHeroicInspiration?: string}).grantHeroicInspiration || undefined,
+      grantHeroicInspiration: ((f as {grantHeroicInspiration?: string}).grantHeroicInspiration || undefined) as 'long_rest' | 'short_rest' | undefined,
       cost:                f.cost?.trim()         || undefined,
       sourceId:            f.sourceId?.trim()     || undefined,
       sourceType:          f.sourceType           || undefined,
