@@ -109,15 +109,32 @@ export function deriveStats(character: Character, gameData: GameData): DerivedSt
         // Add all features from tiers 1..current
         for (const pt of pathFeat.pathTiers) {
           if (pt.tier > tier) break;
+          // Inline features on the tier
           for (const f of pt.features ?? []) {
             if (!allFeatures.some(x => x.id === f.id)) allFeatures.push(f);
             allModifiers.push(...(f.modifiers ?? []));
           }
+          // DB feature refs on the tier (base features, recharge triggers)
           for (const ref of pt.featureRefs ?? []) {
             const dbFeat = gameData.features?.find(f => f.id === ref);
             if (dbFeat && !allFeatures.some(f => f.id === dbFeat.id)) {
               allFeatures.push(dbFeat);
               allModifiers.push(...(dbFeat.modifiers ?? []));
+            }
+          }
+          // Tier choices — resolve featureIds from selected options (augments)
+          for (const choice of pt.choices ?? []) {
+            const resolved = classEntry.choices.find(r => r.choiceId === choice.id);
+            if (!resolved) continue;
+            for (const selectedId of resolved.selectedValues) {
+              const opt = choice.options?.find(o => o.id === selectedId);
+              for (const fid of (opt?.featureIds ?? [])) {
+                const dbFeat = gameData.features?.find(f => f.id === fid);
+                if (dbFeat && !allFeatures.some(f => f.id === dbFeat.id)) {
+                  allFeatures.push(dbFeat);
+                  allModifiers.push(...(dbFeat.modifiers ?? []));
+                }
+              }
             }
           }
         }

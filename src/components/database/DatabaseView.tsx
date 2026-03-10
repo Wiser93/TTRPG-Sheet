@@ -107,15 +107,46 @@ export function DatabaseView() {
   }
 
   async function handleDelete(type: SectionKey, id: string) {
+    if (type === 'classes') {
+      await handleDeleteClass(id);
+      return;
+    }
     if (!confirm('Delete this entry? This cannot be undone.')) return;
     if (type === 'items')            await deleteItem(id);
     else if (type === 'spells')      await deleteSpell(id);
-    else if (type === 'classes')     await deleteClass(id);
     else if (type === 'feats')       await deleteFeat(id);
     else if (type === 'features')    await deleteFeature(id);
     else if (type === 'species')     await deleteSpecies(id);
     else if (type === 'backgrounds') await deleteBackground(id);
     else if (type === 'subclasses')  await deleteSubclass(id);
+  }
+
+  async function handleDeleteClass(id: string) {
+    const cls = classes?.find(c => c.id === id);
+    if (!cls) return;
+    const linkedSubclasses = (subclasses ?? []).filter(s => s.parentClassId === id);
+    const linkedFeatures = (features ?? []).filter(f => f.sourceId === id && f.sourceType === 'class');
+
+    const parts: string[] = [`Delete class "${cls.name}"?`];
+    if (linkedSubclasses.length > 0)
+      parts.push(`This will also offer to delete ${linkedSubclasses.length} subclass(es): ${linkedSubclasses.map(s => s.name).join(', ')}.`);
+    if (linkedFeatures.length > 0)
+      parts.push(`${linkedFeatures.length} feature(s) are linked to this class.`);
+
+    if (!confirm(parts.join('\n\n') + '\n\nContinue?')) return;
+
+    await deleteClass(id);
+
+    if (linkedSubclasses.length > 0) {
+      if (confirm(`Delete ${linkedSubclasses.length} linked subclass(es)?\n${linkedSubclasses.map(s => s.name).join(', ')}`)) {
+        for (const s of linkedSubclasses) await deleteSubclass(s.id);
+      }
+    }
+    if (linkedFeatures.length > 0) {
+      if (confirm(`Delete ${linkedFeatures.length} linked feature(s)?\n${linkedFeatures.map(f => f.name).join(', ')}`)) {
+        for (const f of linkedFeatures) await deleteFeature(f.id);
+      }
+    }
   }
 
   // ── Panel title ─────────────────────────────────────────────

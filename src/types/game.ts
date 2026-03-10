@@ -126,8 +126,6 @@ export interface PathTier {
   name: string;
   /** Description of what this tier unlocks */
   description?: string;
-  /** Text describing the recharge trigger for this element */
-  rechargeDescription?: string;
   /** Text describing the Boost granted at this tier */
   boostDescription?: string;
   /** Inline features granted at this tier */

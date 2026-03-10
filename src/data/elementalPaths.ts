@@ -1,14 +1,128 @@
 /**
  * Elemental Path features — Water, Earth, Fire, Air
  *
- * Each is an isPath feature with 4 tiers (Stillness/Current/Tide/Ocean, etc.).
- * Include in elementalShaperFeatures for DB seeding.
+ * Every tier feature, augment, and recharge trigger is a proper named Feature export.
+ * Recharge triggers are informational card features on the combat tab.
+ * Tier 1 base features and recharge are granted via featureRefs.
+ * Tier 2–4 augment choices grant features via ChoiceOption.featureIds.
  */
 
 import type { Feature } from '@/types/game';
 
-// ── Water ──────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+// WATER PATH
+// ═══════════════════════════════════════════════════════════════
 
+// ── Recharge trigger ─────────────────────────────────────────
+export const waterRecharge: Feature = {
+  id: 'path-water-recharge',
+  name: 'Water Recharge',
+  description: 'If you are the target of an attack and use a reaction during a single round, regain 1 expended EC.',
+  actionType: 'passive',
+  tags: ['water', 'recharge'],
+  isCard: false,
+};
+
+// ── Tier 1 ───────────────────────────────────────────────────
+export const riptideStep: Feature = {
+  id: 'path-water-riptide-step',
+  name: 'Riptide Step',
+  actionType: 'reaction',
+  cost: '1 EC',
+  description: 'When you are hit with a melee attack, spend 1 EC to move 10 ft without provoking opportunity attacks and reduce the damage by your WIS modifier.',
+  tags: ['water', 'defensive'],
+};
+
+export const flowingForm: Feature = {
+  id: 'path-water-flowing-form',
+  name: 'Flowing Form',
+  actionType: 'passive',
+  description: 'You can move through spaces occupied by hostile creatures as if they were difficult terrain. You have advantage on checks to escape grapples or being restrained.',
+  tags: ['water', 'mobility'],
+};
+
+// ── Tier 2 augments ──────────────────────────────────────────
+export const crashingWave: Feature = {
+  id: 'path-water-crashing-wave',
+  name: 'Crashing Wave',
+  actionType: 'action',
+  cost: '2 EC',
+  description: 'Send a 15 ft wide wave 15 ft out from you. Creatures in the area make a Strength save or are pushed back; those who collide with a solid object are knocked prone and take 2d6 bludgeoning damage.',
+  tags: ['water', 'control'],
+};
+
+export const mistVeil: Feature = {
+  id: 'path-water-mist-veil',
+  name: 'Mist Veil',
+  actionType: 'bonus_action',
+  cost: '1 EC',
+  description: 'Until the start of your next turn you are lightly obscured and the first ranged attack against you has disadvantage. If you move 10 ft or more, you may make a Stealth check even if observed.',
+  tags: ['water', 'defensive'],
+};
+
+export const hydrostaticArmor: Feature = {
+  id: 'path-water-hydrostatic-armor',
+  name: 'Hydrostatic Armor',
+  actionType: 'passive',
+  description: 'While wearing no armour and carrying no shield, your AC equals 13 + your WIS modifier.',
+  tags: ['water', 'defensive'],
+};
+
+// ── Tier 3 augments ──────────────────────────────────────────
+export const healingWave: Feature = {
+  id: 'path-water-healing-wave',
+  name: 'Healing Wave',
+  actionType: 'action',
+  cost: '3 EC',
+  description: 'Restore (proficiency bonus)d6 + WIS modifier hit points to a creature you can see within 30 ft.',
+  tags: ['water', 'healing'],
+};
+
+export const tidalChains: Feature = {
+  id: 'path-water-tidal-chains',
+  name: 'Tidal Chains',
+  actionType: 'action',
+  cost: '1 EC',
+  description: 'Pull a creature within 30 ft up to 15 ft toward you. The creature makes a Strength save; on a failure its movement speed is halved until the end of its next turn.',
+  tags: ['water', 'control'],
+};
+
+export const ebbAndFlow: Feature = {
+  id: 'path-water-ebb-and-flow',
+  name: 'Ebb and Flow',
+  actionType: 'passive',
+  description: 'Once per turn, when a creature misses you with a melee attack, you may make an attack roll against a different creature within 5 ft. The attack deals damage equal to your WIS modifier of the same damage type as the original attack.',
+  tags: ['water', 'passive'],
+};
+
+// ── Tier 4 augments ──────────────────────────────────────────
+export const flowmastersGrace: Feature = {
+  id: 'path-water-flowmasters-grace',
+  name: "Flowmaster's Grace",
+  actionType: 'passive',
+  description: "When you move through a hostile creature's space, that creature must succeed on a DEX save or be unbalanced until the end of its next turn: it can't take reactions and its speed is halved.",
+  tags: ['water', 'passive', 'control'],
+};
+
+export const icePrison: Feature = {
+  id: 'path-water-ice-prison',
+  name: 'Ice Prison',
+  actionType: 'action',
+  cost: '5 EC',
+  description: 'Conjure a 15 ft radius sphere of ice centred on a point within 30 ft (duration: 1 minute, AC 12, 75 HP, vulnerable to fire). The sphere can be transparent or opaque. Enemies inside take 1d6 cold damage at the start of their turn.',
+  tags: ['water', 'control'],
+};
+
+export const moonwater: Feature = {
+  id: 'path-water-moonwater',
+  name: 'Moonwater',
+  actionType: 'action',
+  cost: 'X EC',
+  description: 'Choose up to your WIS modifier creatures within 15 ft. Each regains Xd6 HP, may move 5 ft freely, and ends one condition of your choice: Blinded, Charmed, Deafened, Frightened, Incapacitated, Paralyzed, Poisoned, or Stunned.',
+  tags: ['water', 'healing'],
+};
+
+// ── Path feature ─────────────────────────────────────────────
 export const pathWater: Feature = {
   id: 'path-water',
   name: 'Water Path',
@@ -22,30 +136,12 @@ export const pathWater: Feature = {
     {
       tier: 1,
       name: 'Stillness',
-      rechargeDescription: 'If you are the target of an attack and use a reaction during a single round, regain 1 expended EC.',
-      boostDescription: '',
-      features: [
-        {
-          id: 'path-water-t1-riptide-step',
-          name: 'Riptide Step',
-          actionType: 'reaction',
-          cost: '1 EC',
-          description: 'When you are hit with a melee attack, spend 1 EC to move 10ft without provoking opportunity attacks and reduce the damage by your WIS modifier.',
-          tags: ['water', 'reaction', 'defensive'],
-        },
-        {
-          id: 'path-water-t1-flowing-form',
-          name: 'Flowing Form',
-          actionType: 'passive',
-          description: 'You can move through spaces occupied by hostile creatures as if they were difficult terrain. You have advantage on checks to escape grapples or being restrained.',
-          tags: ['water', 'passive', 'mobility'],
-        },
-      ],
+      featureRefs: [waterRecharge.id, riptideStep.id, flowingForm.id],
     },
     {
       tier: 2,
       name: 'Current',
-      boostDescription: 'If an ally within 10 feet is targeted by a melee attack, you may use Riptide Step to swap places with them before the attack roll, becoming the new target. If you are hit, you may continue with Riptide Step\'s original function as part of the same reaction.',
+      boostDescription: "If an ally within 10 ft is targeted by a melee attack, you may use Riptide Step to swap places with them before the attack roll, becoming the new target. If you are hit, you may continue with Riptide Step's original function as part of the same reaction.",
       choices: [
         {
           id: 'water-t2-augment',
@@ -53,21 +149,9 @@ export const pathWater: Feature = {
           type: 'custom_feature',
           count: 1,
           options: [
-            {
-              id: 'crashing-wave',
-              label: 'Crashing Wave',
-              description: 'Action / 2 EC — Send a 15ft wide wave 15ft out. Strength save or pushed back; collisions knock prone and deal 2d6 bludgeoning.',
-            },
-            {
-              id: 'mist-veil',
-              label: 'Mist Veil',
-              description: 'Bonus / 1 EC — Until next turn: lightly obscured, disadvantage on first ranged attack against you. If you move 10ft+, make a Stealth check even if observed.',
-            },
-            {
-              id: 'hydrostatic-armor',
-              label: 'Hydrostatic Armor',
-              description: 'Passive — When you have no armour or shield, AC = 13 + WIS modifier.',
-            },
+            { id: crashingWave.id,      label: crashingWave.name,      description: crashingWave.description,      featureIds: [crashingWave.id] },
+            { id: mistVeil.id,          label: mistVeil.name,          description: mistVeil.description,          featureIds: [mistVeil.id] },
+            { id: hydrostaticArmor.id,  label: hydrostaticArmor.name,  description: hydrostaticArmor.description,  featureIds: [hydrostaticArmor.id] },
           ],
         },
       ],
@@ -75,7 +159,7 @@ export const pathWater: Feature = {
     {
       tier: 3,
       name: 'Tide',
-      boostDescription: 'If Riptide Step is used to swap with an ally, impose disadvantage on the attack; you can utilise the move after the attack, even if it misses. When you move away using Riptide Step you may leave a slick 5ft radius (DEX save to move through, fail = prone).',
+      boostDescription: 'If Riptide Step is used to swap with an ally, impose disadvantage on the attack; you can utilise the move after the attack, even if it misses. When you move away using Riptide Step you may leave a slick 5 ft radius (DEX save to move through, fail = prone).',
       choices: [
         {
           id: 'water-t3-augment',
@@ -83,21 +167,9 @@ export const pathWater: Feature = {
           type: 'custom_feature',
           count: 1,
           options: [
-            {
-              id: 'healing-wave',
-              label: 'Healing Wave',
-              description: 'Action / 3 EC — Restore (Prof)d6 + WIS HP to a creature within 30ft.',
-            },
-            {
-              id: 'tidal-chains',
-              label: 'Tidal Chains',
-              description: 'Action / 1 EC — Pull a creature within 30ft 15ft toward you. Strength save to prevent; on fail, movement halved until end of next turn.',
-            },
-            {
-              id: 'ebb-and-flow',
-              label: 'Ebb and Flow',
-              description: 'Passive — Once per turn, when a creature misses you with a melee attack, make an attack roll against a different creature within 5ft. Deals damage equal to your WIS modifier of the original attack\'s type.',
-            },
+            { id: healingWave.id,  label: healingWave.name,  description: healingWave.description,  featureIds: [healingWave.id] },
+            { id: tidalChains.id,  label: tidalChains.name,  description: tidalChains.description,  featureIds: [tidalChains.id] },
+            { id: ebbAndFlow.id,   label: ebbAndFlow.name,   description: ebbAndFlow.description,   featureIds: [ebbAndFlow.id] },
           ],
         },
       ],
@@ -105,7 +177,7 @@ export const pathWater: Feature = {
     {
       tier: 4,
       name: 'Ocean',
-      boostDescription: 'Riptide now has no EC cost, the step expands to allies within 15ft and the movement afterwards increases to 15ft. Gain 1 Water Augment you didn\'t take from a previous tier.',
+      boostDescription: "Riptide Step now has no EC cost, the range expands to allies within 15 ft, and the movement afterwards increases to 15 ft. Gain 1 Water Augment you didn't take from a previous tier.",
       choices: [
         {
           id: 'water-t4-augment',
@@ -113,21 +185,9 @@ export const pathWater: Feature = {
           type: 'custom_feature',
           count: 1,
           options: [
-            {
-              id: 'flowmasters-grace',
-              label: "Flowmaster's Grace",
-              description: 'Passive — When you move through a hostile creature\'s space, they must succeed on a DEX save or be unbalanced until end of their next turn: can\'t take reactions, speed halved.',
-            },
-            {
-              id: 'ice-prison',
-              label: 'Ice Prison',
-              description: 'Action / 5 EC — Conjure a 15ft sphere of ice centred within 30ft (1 min, AC 12, 75 HP, vulnerable to fire). Transparent or opaque. Enemies inside take 1d6 cold at start of their turn.',
-            },
-            {
-              id: 'moonwater',
-              label: 'Moonwater',
-              description: 'Action / X EC — Choose up to WIS modifier creatures within 15ft. Each regains Xd6 HP, moves 5ft freely, and ends one condition: Blinded, Charmed, Deafened, Frightened, Incapacitated, Paralyzed, Poisoned, or Stunned.',
-            },
+            { id: flowmastersGrace.id,  label: flowmastersGrace.name,  description: flowmastersGrace.description,  featureIds: [flowmastersGrace.id] },
+            { id: icePrison.id,         label: icePrison.name,         description: icePrison.description,         featureIds: [icePrison.id] },
+            { id: moonwater.id,         label: moonwater.name,         description: moonwater.description,         featureIds: [moonwater.id] },
           ],
         },
       ],
@@ -135,7 +195,116 @@ export const pathWater: Feature = {
   ],
 };
 
-// ── Earth ──────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+// EARTH PATH
+// ═══════════════════════════════════════════════════════════════
+
+export const earthRecharge: Feature = {
+  id: 'path-earth-recharge',
+  name: 'Earth Recharge',
+  description: "When you don't move on your turn (including no forced movement), regain 1 expended EC.",
+  actionType: 'passive',
+  tags: ['earth', 'recharge'],
+};
+
+// ── Tier 1 ───────────────────────────────────────────────────
+export const earthenGrasp: Feature = {
+  id: 'path-earth-earthen-grasp',
+  name: 'Earthen Grasp',
+  actionType: 'action',
+  cost: '1 EC',
+  description: 'Expend 1 EC to create a grasping hand of stone targeting a creature within 30 ft. The creature makes a Strength save or is restrained until the end of its turn.',
+  tags: ['earth', 'control'],
+};
+
+export const stonesEndurance: Feature = {
+  id: 'path-earth-stones-endurance',
+  name: "Stone's Endurance",
+  actionType: 'passive',
+  description: "When a creature's attack roll against you exceeds your AC by less than your proficiency bonus, reduce the damage you take by your WIS modifier.",
+  tags: ['earth', 'defensive'],
+};
+
+// ── Tier 2 augments ──────────────────────────────────────────
+export const stonewall: Feature = {
+  id: 'path-earth-stonewall',
+  name: 'Stonewall',
+  actionType: 'action',
+  cost: '1 EC',
+  description: 'Create a 10 ft × 10 ft × 2 ft wall of stone within 30 ft (AC 12, 20 HP). The wall may be placed at an angle, including horizontally.',
+  tags: ['earth', 'terrain'],
+};
+
+export const bulwarkStep: Feature = {
+  id: 'path-earth-bulwark-step',
+  name: 'Bulwark Step',
+  actionType: 'reaction',
+  cost: '1 EC',
+  description: 'When you or an ally within 5 ft is hit by an attack, raise a slab of stone that reduces the damage by 1d10 + your WIS modifier.',
+  tags: ['earth', 'defensive'],
+};
+
+export const gravityAnchor: Feature = {
+  id: 'path-earth-gravity-anchor',
+  name: 'Gravity Anchor',
+  actionType: 'passive',
+  description: 'You have advantage on checks and saving throws against forced movement or being knocked prone.',
+  tags: ['earth', 'defensive'],
+};
+
+// ── Tier 3 augments ──────────────────────────────────────────
+export const tectonicTremor: Feature = {
+  id: 'path-earth-tectonic-tremor',
+  name: 'Tectonic Tremor',
+  actionType: 'action',
+  cost: '2 EC',
+  description: 'All creatures of your choice within a 20 ft radius make a Strength save or fall prone and take (proficiency bonus)d6 bludgeoning damage. The area becomes difficult terrain until cleared.',
+  tags: ['earth', 'control', 'aoe'],
+};
+
+export const livingStone: Feature = {
+  id: 'path-earth-living-stone',
+  name: 'Living Stone',
+  actionType: 'bonus_action',
+  cost: '2 EC',
+  description: 'Gain resistance to all damage until the start of your next turn.',
+  tags: ['earth', 'defensive'],
+};
+
+export const geomanticPulse: Feature = {
+  id: 'path-earth-geomantic-pulse',
+  name: 'Geomantic Pulse',
+  actionType: 'passive',
+  description: "Whenever you end your turn on stone or earth, regain 1 temporary HP per EC remaining (up to the amount reduced by Stone's Endurance since your last turn). This occurs after the recharge trigger.",
+  tags: ['earth', 'passive'],
+};
+
+// ── Tier 4 augments ──────────────────────────────────────────
+export const ironcoreBastion: Feature = {
+  id: 'path-earth-ironcore-bastion',
+  name: 'Ironcore Bastion',
+  actionType: 'action',
+  cost: '5 EC',
+  description: 'For 1 minute, emit an aura in a 10 ft radius that grants you and your allies +3 AC and creates difficult terrain that moves with you.',
+  tags: ['earth', 'aura'],
+};
+
+export const stonecrush: Feature = {
+  id: 'path-earth-stonecrush',
+  name: 'Stonecrush',
+  actionType: 'action',
+  cost: '3 EC',
+  description: 'Target a creature restrained by Earthen Grasp; deal 3d6 bludgeoning damage and inflict one level of exhaustion.',
+  tags: ['earth', 'damage'],
+};
+
+export const stonegripMantle: Feature = {
+  id: 'path-earth-stonegrip-mantle',
+  name: 'Stonegrip Mantle',
+  actionType: 'passive',
+  description: 'When you have fewer than 5 EC and are hit by a melee attack, the attacker makes a Strength save. On a failure, it is pushed back 15 ft and restrained by Earthen Grasp at no EC cost. Triggers once per turn, even if you are unconscious.',
+  tags: ['earth', 'passive', 'defensive'],
+};
 
 export const pathEarth: Feature = {
   id: 'path-earth',
@@ -150,29 +319,12 @@ export const pathEarth: Feature = {
     {
       tier: 1,
       name: 'Rooted',
-      rechargeDescription: 'When you don\'t move on your turn (including forced movement), regain 1 expended EC.',
-      features: [
-        {
-          id: 'path-earth-t1-earthen-grasp',
-          name: 'Earthen Grasp',
-          actionType: 'action',
-          cost: '1 EC',
-          description: 'Expend 1 EC to create a grasping hand of stone. A target within 30ft must make a Strength save or be restrained (save ends at end of turn).',
-          tags: ['earth', 'control'],
-        },
-        {
-          id: 'path-earth-t1-stones-endurance',
-          name: "Stone's Endurance",
-          actionType: 'passive',
-          description: 'When a creature\'s attack roll against you exceeds your AC by less than your proficiency bonus, reduce the damage you take by your WIS modifier.',
-          tags: ['earth', 'passive', 'defensive'],
-        },
-      ],
+      featureRefs: [earthRecharge.id, earthenGrasp.id, stonesEndurance.id],
     },
     {
       tier: 2,
       name: 'Mantle',
-      boostDescription: 'Earthen Grasp can now affect up to 2 creatures within 30ft (one target per EC spent). You may also choose to knock the target prone instead of restraining it.',
+      boostDescription: 'Earthen Grasp can now affect up to 2 creatures within 30 ft (one target per EC spent). You may also choose to knock the target prone instead of restraining it.',
       choices: [
         {
           id: 'earth-t2-augment',
@@ -180,21 +332,9 @@ export const pathEarth: Feature = {
           type: 'custom_feature',
           count: 1,
           options: [
-            {
-              id: 'stonewall',
-              label: 'Stonewall',
-              description: 'Action / 1 EC — Create a 10ft×10ft×2ft wall of stone within 30ft (AC 12, 20 HP). May be at an angle, including horizontal.',
-            },
-            {
-              id: 'bulwark-step',
-              label: 'Bulwark Step',
-              description: 'Reaction / 1 EC — When you or an ally within 5ft is hit by an attack, raise a slab of stone reducing damage by 1d10 + WIS.',
-            },
-            {
-              id: 'gravity-anchor',
-              label: 'Gravity Anchor',
-              description: 'Passive — Advantage on checks and saves against forced movement or being knocked prone.',
-            },
+            { id: stonewall.id,       label: stonewall.name,       description: stonewall.description,       featureIds: [stonewall.id] },
+            { id: bulwarkStep.id,     label: bulwarkStep.name,     description: bulwarkStep.description,     featureIds: [bulwarkStep.id] },
+            { id: gravityAnchor.id,   label: gravityAnchor.name,   description: gravityAnchor.description,   featureIds: [gravityAnchor.id] },
           ],
         },
       ],
@@ -210,21 +350,9 @@ export const pathEarth: Feature = {
           type: 'custom_feature',
           count: 1,
           options: [
-            {
-              id: 'tectonic-tremor',
-              label: 'Tectonic Tremor',
-              description: 'Action / 2 EC — All creatures of your choice in a 20ft radius make a Strength save or fall prone and take (Prof)d6 bludgeoning. Area is difficult terrain until cleared.',
-            },
-            {
-              id: 'living-stone',
-              label: 'Living Stone',
-              description: 'Bonus / 2 EC — Gain resistance to all damage until the start of your next turn.',
-            },
-            {
-              id: 'geomantic-pulse',
-              label: 'Geomantic Pulse',
-              description: "Passive — Whenever you end your turn on stone or earth, regain 1 temp HP per EC remaining (up to the amount from the last Stone's Endurance). Happens after recharge trigger.",
-            },
+            { id: tectonicTremor.id,  label: tectonicTremor.name,  description: tectonicTremor.description,  featureIds: [tectonicTremor.id] },
+            { id: livingStone.id,     label: livingStone.name,     description: livingStone.description,     featureIds: [livingStone.id] },
+            { id: geomanticPulse.id,  label: geomanticPulse.name,  description: geomanticPulse.description,  featureIds: [geomanticPulse.id] },
           ],
         },
       ],
@@ -232,7 +360,7 @@ export const pathEarth: Feature = {
     {
       tier: 4,
       name: 'Mountain',
-      boostDescription: 'Earthen Grasp can now be used as a bonus action. You also create a 5ft radius zone of difficult terrain around the target. Gain 1 Earth Augment you didn\'t take from a previous tier.',
+      boostDescription: "Earthen Grasp can now be used as a bonus action. You also create a 5 ft radius zone of difficult terrain around the target. Gain 1 Earth Augment you didn't take from a previous tier.",
       choices: [
         {
           id: 'earth-t4-augment',
@@ -240,21 +368,9 @@ export const pathEarth: Feature = {
           type: 'custom_feature',
           count: 1,
           options: [
-            {
-              id: 'ironcore-bastion',
-              label: 'Ironcore Bastion',
-              description: 'Action / 5 EC — For 1 minute, emit an aura (10ft radius) granting you and allies +3 AC and creating difficult terrain that moves with you.',
-            },
-            {
-              id: 'stonecrush',
-              label: 'Stonecrush',
-              description: 'Action / 3 EC — Choose a target restrained by Earthen Grasp; deal 3d6 bludgeoning and inflict a level of exhaustion.',
-            },
-            {
-              id: 'stonegrip-mantle',
-              label: 'Stonegrip Mantle',
-              description: 'Passive — When you have fewer than 5 EC and are hit by a melee attack, the attacker makes a Strength save. On a fail, push back 15ft and restrain with Earthen Grasp (no EC cost). Once per turn, can trigger even if unconscious.',
-            },
+            { id: ironcoreBastion.id,  label: ironcoreBastion.name,  description: ironcoreBastion.description,  featureIds: [ironcoreBastion.id] },
+            { id: stonecrush.id,       label: stonecrush.name,       description: stonecrush.description,       featureIds: [stonecrush.id] },
+            { id: stonegripMantle.id,  label: stonegripMantle.name,  description: stonegripMantle.description,  featureIds: [stonegripMantle.id] },
           ],
         },
       ],
@@ -262,7 +378,116 @@ export const pathEarth: Feature = {
   ],
 };
 
-// ── Fire ───────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+// FIRE PATH
+// ═══════════════════════════════════════════════════════════════
+
+export const fireRecharge: Feature = {
+  id: 'path-fire-recharge',
+  name: 'Fire Recharge',
+  description: 'When you reduce an enemy to 0 hit points with fire damage, regain 1 expended EC.',
+  actionType: 'passive',
+  tags: ['fire', 'recharge'],
+};
+
+// ── Tier 1 ───────────────────────────────────────────────────
+export const flameLash: Feature = {
+  id: 'path-fire-flame-lash',
+  name: 'Flame Lash',
+  actionType: 'bonus_action',
+  cost: '1 EC',
+  description: 'Create a whip of flame. Make a melee spell attack with 15 ft reach; on a hit, deal (proficiency bonus)d6 fire damage and pull the target up to 10 ft toward you.',
+  tags: ['fire', 'attack'],
+};
+
+export const kindledMotion: Feature = {
+  id: 'path-fire-kindled-motion',
+  name: 'Kindled Motion',
+  actionType: 'passive',
+  description: 'Your movement speed increases by 10 ft while you are below half your maximum hit points.',
+  tags: ['fire', 'passive', 'mobility'],
+};
+
+// ── Tier 2 augments ──────────────────────────────────────────
+export const scorchingArc: Feature = {
+  id: 'path-fire-scorching-arc',
+  name: 'Scorching Arc',
+  actionType: 'action',
+  cost: '2 EC',
+  description: 'Release a 30 ft × 5 ft line of fire. Creatures in the area make a DEX save or take 4d6 fire damage and are Ignited (1d6 fire damage at the start of their turn; CON save at end of turn ends).',
+  tags: ['fire', 'aoe', 'damage'],
+};
+
+export const firebrand: Feature = {
+  id: 'path-fire-firebrand',
+  name: 'Firebrand',
+  actionType: 'reaction',
+  cost: '1 EC',
+  description: 'When you are hit by a melee attack, the attacker takes (proficiency bonus)d4 fire damage.',
+  tags: ['fire', 'defensive', 'reaction'],
+};
+
+export const searingMomentum: Feature = {
+  id: 'path-fire-searing-momentum',
+  name: 'Searing Momentum',
+  actionType: 'passive',
+  description: 'After using all of your movement on your turn, your next melee attack that turn deals an additional 1d8 fire damage.',
+  tags: ['fire', 'passive'],
+};
+
+// ── Tier 3 augments ──────────────────────────────────────────
+export const infernoHalo: Feature = {
+  id: 'path-fire-inferno-halo',
+  name: 'Inferno Halo',
+  actionType: 'passive',
+  description: 'At the start of your turn, each enemy within 5 ft takes 1 fire damage per EC you currently have.',
+  tags: ['fire', 'passive', 'aura'],
+};
+
+export const ashenGrasp: Feature = {
+  id: 'path-fire-ashen-grasp',
+  name: 'Ashen Grasp',
+  actionType: 'action',
+  cost: '1 EC',
+  description: 'Make a melee touch attack. Until the end of the target\'s next turn, it is Ash-Marked: it takes 1d10 fire damage whenever it takes an action, a bonus action, or moves.',
+  tags: ['fire', 'control', 'damage'],
+};
+
+export const explosiveCast: Feature = {
+  id: 'path-fire-explosive-cast',
+  name: 'Explosive Cast',
+  actionType: 'passive',
+  description: 'When you reduce a creature to 0 HP with fire damage, creatures within 5 ft of the target take fire damage equal to your WIS modifier.',
+  tags: ['fire', 'passive'],
+};
+
+// ── Tier 4 augments ──────────────────────────────────────────
+export const phoenixBloom: Feature = {
+  id: 'path-fire-phoenix-bloom',
+  name: 'Phoenix Bloom',
+  actionType: 'bonus_action',
+  cost: 'X EC (1/long rest)',
+  uses: { max: { type: 'flat', value: 1 }, rechargeOn: 'long_rest' },
+  description: 'Burst in a 20 ft radius: allies regain Xd6 HP and enemies take Xd6 fire damage.',
+  tags: ['fire', 'aoe', 'healing'],
+};
+
+export const meteorDrop: Feature = {
+  id: 'path-fire-meteor-drop',
+  name: 'Meteor Drop',
+  actionType: 'action',
+  cost: '5 EC',
+  description: 'Leap up to double your movement speed and slam down in a 10 ft radius. Creatures in the area take 10d6 damage and are pushed 10 ft back. STR save or knocked prone.',
+  tags: ['fire', 'damage', 'aoe'],
+};
+
+export const burningDominion: Feature = {
+  id: 'path-fire-burning-dominion',
+  name: 'Burning Dominion',
+  actionType: 'passive',
+  description: 'When you spend 2 or more EC in a single turn, enemies within a 10 ft radius are Ignited.',
+  tags: ['fire', 'passive', 'aura'],
+};
 
 export const pathFire: Feature = {
   id: 'path-fire',
@@ -277,29 +502,12 @@ export const pathFire: Feature = {
     {
       tier: 1,
       name: 'The Flame Within',
-      rechargeDescription: 'When you reduce an enemy to 0 hit points with Fire damage, regain 1 expended EC.',
-      features: [
-        {
-          id: 'path-fire-t1-flame-lash',
-          name: 'Flame Lash',
-          actionType: 'bonus_action',
-          cost: '1 EC',
-          description: 'Create a whip of flame. Make a melee spell attack (reach 15ft); on hit, deal (Prof)d6 Fire damage and pull the target up to 10ft toward you.',
-          tags: ['fire', 'attack', 'pull'],
-        },
-        {
-          id: 'path-fire-t1-kindled-motion',
-          name: 'Kindled Motion',
-          actionType: 'passive',
-          description: 'Your movement speed increases by 10ft while below half hit points.',
-          tags: ['fire', 'passive', 'mobility'],
-        },
-      ],
+      featureRefs: [fireRecharge.id, flameLash.id, kindledMotion.id],
     },
     {
       tier: 2,
       name: 'Kindling',
-      boostDescription: 'Flame Lash now deals (Prof)d8 Fire and Ignites the target (1d6 at the start of their turn, DC 13 Con save ends at end of turn).',
+      boostDescription: 'Flame Lash now deals (proficiency bonus)d8 fire damage and Ignites the target (1d6 fire at the start of their turn; CON save at end of turn ends).',
       choices: [
         {
           id: 'fire-t2-augment',
@@ -307,21 +515,9 @@ export const pathFire: Feature = {
           type: 'custom_feature',
           count: 1,
           options: [
-            {
-              id: 'scorching-arc',
-              label: 'Scorching Arc',
-              description: 'Action / 2 EC — 30ft × 5ft line. DEX save or 4d6 fire + Ignite.',
-            },
-            {
-              id: 'firebrand',
-              label: 'Firebrand',
-              description: 'Reaction / 1 EC — When hit by a melee attack, the attacker takes (Prof)d4 Fire damage.',
-            },
-            {
-              id: 'searing-momentum',
-              label: 'Searing Momentum',
-              description: 'Passive — After using all of your movement, your next melee attack that turn deals +1d8 Fire.',
-            },
+            { id: scorchingArc.id,      label: scorchingArc.name,      description: scorchingArc.description,      featureIds: [scorchingArc.id] },
+            { id: firebrand.id,         label: firebrand.name,         description: firebrand.description,         featureIds: [firebrand.id] },
+            { id: searingMomentum.id,   label: searingMomentum.name,   description: searingMomentum.description,   featureIds: [searingMomentum.id] },
           ],
         },
       ],
@@ -329,7 +525,7 @@ export const pathFire: Feature = {
     {
       tier: 3,
       name: 'Blaze',
-      boostDescription: 'Fire damage from class features ignores resistance. Flame Lash range increases to 20ft, the pull increases to 15ft.',
+      boostDescription: 'Fire damage from class features ignores resistance. Flame Lash range increases to 20 ft, the pull increases to 15 ft.',
       choices: [
         {
           id: 'fire-t3-augment',
@@ -337,21 +533,9 @@ export const pathFire: Feature = {
           type: 'custom_feature',
           count: 1,
           options: [
-            {
-              id: 'inferno-halo',
-              label: 'Inferno Halo',
-              description: 'Passive — At the start of your turn, enemies within 5ft take 1 Fire damage per EC you have.',
-            },
-            {
-              id: 'ashen-grasp',
-              label: 'Ashen Grasp',
-              description: 'Action / 1 EC — Touch attack. Until end of their next turn, target is Ash-Marked: takes 1d10 Fire damage whenever they take an action, a bonus action, or move.',
-            },
-            {
-              id: 'explosive-cast',
-              label: 'Explosive Cast',
-              description: 'Passive — If you reduce a creature to 0 HP with Fire damage, creatures within 5ft take Fire damage equal to your WIS modifier.',
-            },
+            { id: infernoHalo.id,     label: infernoHalo.name,     description: infernoHalo.description,     featureIds: [infernoHalo.id] },
+            { id: ashenGrasp.id,      label: ashenGrasp.name,      description: ashenGrasp.description,      featureIds: [ashenGrasp.id] },
+            { id: explosiveCast.id,   label: explosiveCast.name,   description: explosiveCast.description,   featureIds: [explosiveCast.id] },
           ],
         },
       ],
@@ -359,7 +543,7 @@ export const pathFire: Feature = {
     {
       tier: 4,
       name: 'Inferno',
-      boostDescription: 'Flame Lash now Ignites enemies within 5ft of the target at any point during the pull. Gain 1 Fire Augment you didn\'t take from a previous tier.',
+      boostDescription: "Flame Lash now Ignites enemies within 5 ft of the target at any point during the pull. Gain 1 Fire Augment you didn't take from a previous tier.",
       choices: [
         {
           id: 'fire-t4-augment',
@@ -367,21 +551,9 @@ export const pathFire: Feature = {
           type: 'custom_feature',
           count: 1,
           options: [
-            {
-              id: 'phoenix-bloom',
-              label: 'Phoenix Bloom',
-              description: 'Bonus / X EC (1/long rest) — Burst in a 20ft radius: allies regain Xd6 HP, enemies take Xd6 Fire damage.',
-            },
-            {
-              id: 'meteor-drop',
-              label: 'Meteor Drop',
-              description: 'Action / 5 EC — Jump up to double your speed and slam down in a 10ft radius. Deal 10d6 damage, push targets 10ft back. STR save or knocked prone.',
-            },
-            {
-              id: 'burning-dominion',
-              label: 'Burning Dominion',
-              description: 'Passive — When you spend 2 or more EC in a single turn, enemies within a 10ft radius are Ignited.',
-            },
+            { id: phoenixBloom.id,      label: phoenixBloom.name,      description: phoenixBloom.description,      featureIds: [phoenixBloom.id] },
+            { id: meteorDrop.id,        label: meteorDrop.name,        description: meteorDrop.description,        featureIds: [meteorDrop.id] },
+            { id: burningDominion.id,   label: burningDominion.name,   description: burningDominion.description,   featureIds: [burningDominion.id] },
           ],
         },
       ],
@@ -389,7 +561,116 @@ export const pathFire: Feature = {
   ],
 };
 
-// ── Air ────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+// AIR PATH
+// ═══════════════════════════════════════════════════════════════
+
+export const airRecharge: Feature = {
+  id: 'path-air-recharge',
+  name: 'Air Recharge',
+  description: 'If you move 20 ft on your turn and have not been hit by an attack since the start of your last turn, regain 1 expended EC.',
+  actionType: 'passive',
+  tags: ['air', 'recharge'],
+};
+
+// ── Tier 1 ───────────────────────────────────────────────────
+export const cyclonePalm: Feature = {
+  id: 'path-air-cyclone-palm',
+  name: 'Cyclone Palm',
+  actionType: 'action',
+  cost: '1 EC',
+  description: 'As part of the Attack action, expend 1 EC to unleash a burst of air. The target makes a Strength save or is pushed 15 ft and knocked prone.',
+  tags: ['air', 'attack', 'push'],
+};
+
+export const whisperstep: Feature = {
+  id: 'path-air-whisperstep',
+  name: 'Whisperstep',
+  actionType: 'action',
+  description: 'Your speed is halved this turn; you have advantage on Stealth checks until the end of your turn.',
+  tags: ['air', 'stealth'],
+};
+
+// ── Tier 2 augments ──────────────────────────────────────────
+export const galeStep: Feature = {
+  id: 'path-air-gale-step',
+  name: 'Gale Step',
+  actionType: 'reaction',
+  cost: '1 EC',
+  description: "When a creature ends its movement within 5 ft of you, teleport 10 ft to an unoccupied space and impose disadvantage on that creature's next attack roll against you.",
+  tags: ['air', 'defensive', 'mobility'],
+};
+
+export const spiralMomentum: Feature = {
+  id: 'path-air-spiral-momentum',
+  name: 'Spiral Momentum',
+  actionType: 'passive',
+  description: 'Your speed increases by 10 ft. You may Dash as a bonus action without provoking opportunity attacks.',
+  tags: ['air', 'passive', 'mobility'],
+};
+
+export const cycloneFlurry: Feature = {
+  id: 'path-air-cyclone-flurry',
+  name: 'Cyclone Flurry',
+  actionType: 'passive',
+  description: 'If you move 20 ft in a straight line before using Cyclone Palm, the EC cost is refunded if the target fails the saving throw.',
+  tags: ['air', 'passive'],
+};
+
+// ── Tier 3 augments ──────────────────────────────────────────
+export const shearingVortex: Feature = {
+  id: 'path-air-shearing-vortex',
+  name: 'Shearing Vortex',
+  actionType: 'action',
+  cost: '2 EC',
+  description: 'Create a 10 ft radius vortex centred on a point within 30 ft. Creatures in the area make a Strength save or are pushed to the edge, knocked prone, and have their movement speed halved until the start of your next turn.',
+  tags: ['air', 'control', 'aoe'],
+};
+
+export const eyeOfTheStorm: Feature = {
+  id: 'path-air-eye-of-the-storm',
+  name: 'Eye of the Storm',
+  actionType: 'passive',
+  description: 'You and allies within 10 ft have advantage on DEX saving throws against effects you can see. Does not function while wearing heavy armour.',
+  tags: ['air', 'passive', 'aura'],
+};
+
+export const aerialSentry: Feature = {
+  id: 'path-air-aerial-sentry',
+  name: 'Aerial Sentry',
+  actionType: 'bonus_action',
+  description: 'Hover up to 5 ft above the ground for 1 minute. While hovering: ignore ground-level difficult terrain (including magical), gain +1 AC against ranged attacks, and move through hostile creature spaces (you cannot end your turn there).',
+  tags: ['air', 'mobility'],
+};
+
+// ── Tier 4 augments ──────────────────────────────────────────
+export const sovereignWinds: Feature = {
+  id: 'path-air-sovereign-winds',
+  name: 'Sovereign Winds',
+  actionType: 'bonus_action',
+  cost: '1/long rest',
+  uses: { max: { type: 'flat', value: 1 }, rechargeOn: 'long_rest' },
+  description: 'For 1 minute, gain a flying speed equal to your walking speed + 20 ft and the ability to hover. You may move through enemy spaces; each creature you pass through makes a STR save or is knocked prone and loses reactions until its next turn.',
+  tags: ['air', 'mobility'],
+};
+
+export const reedInTheWind: Feature = {
+  id: 'path-air-reed-in-the-wind',
+  name: 'Reed in the Wind',
+  actionType: 'bonus_action',
+  cost: '5 EC',
+  description: 'For 1 minute, your AC equals 10 + the number of EC you currently have unused.',
+  tags: ['air', 'defensive'],
+};
+
+export const skywardensRebuke: Feature = {
+  id: 'path-air-skywardens-rebuke',
+  name: "Skywarden's Rebuke",
+  actionType: 'reaction',
+  cost: '4 EC',
+  description: 'When a creature within 30 ft targets you or an ally with an attack or harmful effect, unleash a blast of wind. The attacker makes a STR save or their action is wasted and the effect is negated.',
+  tags: ['air', 'defensive', 'reaction'],
+};
 
 export const pathAir: Feature = {
   id: 'path-air',
@@ -404,24 +685,7 @@ export const pathAir: Feature = {
     {
       tier: 1,
       name: 'Whisper',
-      rechargeDescription: 'If you move 20ft on your turn and have not been hit by an attack since the start of your last turn, regain 1 expended EC.',
-      features: [
-        {
-          id: 'path-air-t1-cyclone-palm',
-          name: 'Cyclone Palm',
-          actionType: 'action',
-          cost: '1 EC',
-          description: 'As part of the Attack action, expend 1 EC to unleash a burst of air. The target must succeed on a Strength save or be pushed 15ft and knocked prone.',
-          tags: ['air', 'attack', 'push'],
-        },
-        {
-          id: 'path-air-t1-whisperstep',
-          name: 'Whisperstep',
-          actionType: 'action',
-          description: 'Your speed is halved this turn; you have advantage on Stealth checks.',
-          tags: ['air', 'stealth', 'mobility'],
-        },
-      ],
+      featureRefs: [airRecharge.id, cyclonePalm.id, whisperstep.id],
     },
     {
       tier: 2,
@@ -434,21 +698,9 @@ export const pathAir: Feature = {
           type: 'custom_feature',
           count: 1,
           options: [
-            {
-              id: 'gale-step',
-              label: 'Gale Step',
-              description: 'Reaction / 1 EC — When a creature ends its movement within 5ft, teleport 10ft to an unoccupied space and impose disadvantage on its next attack roll against you.',
-            },
-            {
-              id: 'spiral-momentum',
-              label: 'Spiral Momentum',
-              description: 'Passive/Bonus / —/1 EC — Your speed increases by 10ft. You may dash as a bonus action without provoking opportunity attacks.',
-            },
-            {
-              id: 'cyclone-flurry',
-              label: 'Cyclone Flurry',
-              description: 'Passive — If you move 20ft in a straight line before using Cyclone Palm, the EC cost is refunded if the target fails the save.',
-            },
+            { id: galeStep.id,         label: galeStep.name,         description: galeStep.description,         featureIds: [galeStep.id] },
+            { id: spiralMomentum.id,   label: spiralMomentum.name,   description: spiralMomentum.description,   featureIds: [spiralMomentum.id] },
+            { id: cycloneFlurry.id,    label: cycloneFlurry.name,    description: cycloneFlurry.description,    featureIds: [cycloneFlurry.id] },
           ],
         },
       ],
@@ -456,7 +708,7 @@ export const pathAir: Feature = {
     {
       tier: 3,
       name: 'Storm',
-      boostDescription: 'Whisperstep no longer requires a surface — you may ignore terrain and elevation. If you end your movement next to a hostile creature, force a Strength save or knock them off balance (disadvantage on their next attack).',
+      boostDescription: 'Whisperstep no longer requires a surface — you may ignore terrain and elevation. If you end your movement next to a hostile creature, it makes a Strength save or is knocked off-balance (disadvantage on its next attack).',
       choices: [
         {
           id: 'air-t3-augment',
@@ -464,21 +716,9 @@ export const pathAir: Feature = {
           type: 'custom_feature',
           count: 1,
           options: [
-            {
-              id: 'shearing-vortex',
-              label: 'Shearing Vortex',
-              description: 'Action / 2 EC — 10ft radius vortex within 30ft. Strength save or pushed to edge, knocked prone, movement halved until start of your next turn.',
-            },
-            {
-              id: 'eye-of-the-storm',
-              label: 'Eye of the Storm',
-              description: 'Passive — You and allies within 10ft gain advantage on DEX saves against effects you can see. Does not function in heavy armour.',
-            },
-            {
-              id: 'aerial-sentry',
-              label: 'Aerial Sentry',
-              description: 'Bonus / — — Hover up to 5ft for 1 minute. Ignore ground-level difficult terrain (including magical), +1 AC against ranged attacks, move through hostile creature spaces (can\'t end turn there).',
-            },
+            { id: shearingVortex.id,  label: shearingVortex.name,  description: shearingVortex.description,  featureIds: [shearingVortex.id] },
+            { id: eyeOfTheStorm.id,   label: eyeOfTheStorm.name,   description: eyeOfTheStorm.description,   featureIds: [eyeOfTheStorm.id] },
+            { id: aerialSentry.id,    label: aerialSentry.name,    description: aerialSentry.description,    featureIds: [aerialSentry.id] },
           ],
         },
       ],
@@ -486,7 +726,7 @@ export const pathAir: Feature = {
     {
       tier: 4,
       name: 'Tempest',
-      boostDescription: 'Cyclone Palm can now be used on each weapon attack (1 EC per attack). Your movement speed cannot be reduced and opportunity attacks automatically miss if you have already moved 20ft this turn. Gain 1 Air Augment you didn\'t take from a previous tier.',
+      boostDescription: "Cyclone Palm can now be used on each weapon attack (1 EC per attack). Your movement speed cannot be reduced and opportunity attacks automatically miss if you have already moved 20 ft this turn. Gain 1 Air Augment you didn't take from a previous tier.",
       choices: [
         {
           id: 'air-t4-augment',
@@ -494,21 +734,9 @@ export const pathAir: Feature = {
           type: 'custom_feature',
           count: 1,
           options: [
-            {
-              id: 'sovereign-winds',
-              label: 'Sovereign Winds',
-              description: 'Bonus / 1/long rest — For 1 minute, flying speed = walking speed + 20ft, hover. Move through enemy spaces; they make STR save or knocked prone and lose reactions until next turn.',
-            },
-            {
-              id: 'reed-in-the-wind',
-              label: 'Reed in the Wind',
-              description: 'Bonus / 5 EC — For 1 minute, AC = 10 + unused EC.',
-            },
-            {
-              id: 'skywardens-rebuke',
-              label: "Skywarden's Rebuke",
-              description: 'Reaction / 4 EC — When a creature within 30ft targets you or an ally with an attack or harmful effect, unleash wind. Attacker makes STR save or the action is wasted and effect negated.',
-            },
+            { id: sovereignWinds.id,     label: sovereignWinds.name,     description: sovereignWinds.description,     featureIds: [sovereignWinds.id] },
+            { id: reedInTheWind.id,      label: reedInTheWind.name,      description: reedInTheWind.description,      featureIds: [reedInTheWind.id] },
+            { id: skywardensRebuke.id,   label: skywardensRebuke.name,   description: skywardensRebuke.description,   featureIds: [skywardensRebuke.id] },
           ],
         },
       ],
@@ -516,9 +744,36 @@ export const pathAir: Feature = {
   ],
 };
 
-// ── All path features ──────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+// EXPORTS
+// ═══════════════════════════════════════════════════════════════
 
-export const elementalPathFeatures: Feature[] = [pathWater, pathEarth, pathFire, pathAir];
+export const elementalPathFeatures: Feature[] = [
+  // Path features
+  pathWater, pathEarth, pathFire, pathAir,
+  // Recharge triggers
+  waterRecharge, earthRecharge, fireRecharge, airRecharge,
+  // Water features
+  riptideStep, flowingForm,
+  crashingWave, mistVeil, hydrostaticArmor,
+  healingWave, tidalChains, ebbAndFlow,
+  flowmastersGrace, icePrison, moonwater,
+  // Earth features
+  earthenGrasp, stonesEndurance,
+  stonewall, bulwarkStep, gravityAnchor,
+  tectonicTremor, livingStone, geomanticPulse,
+  ironcoreBastion, stonecrush, stonegripMantle,
+  // Fire features
+  flameLash, kindledMotion,
+  scorchingArc, firebrand, searingMomentum,
+  infernoHalo, ashenGrasp, explosiveCast,
+  phoenixBloom, meteorDrop, burningDominion,
+  // Air features
+  cyclonePalm, whisperstep,
+  galeStep, spiralMomentum, cycloneFlurry,
+  shearingVortex, eyeOfTheStorm, aerialSentry,
+  sovereignWinds, reedInTheWind, skywardensRebuke,
+];
 
 export const ELEMENTAL_PATH_IDS = {
   water: 'path-water',

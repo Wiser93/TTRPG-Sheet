@@ -61,24 +61,7 @@ export const featureElementalEmbodiment: Feature = {
 
 // ── Level 3 ───────────────────────────────────────────────────
 
-export const featureSubclassL3: Feature = {
-  id: 'l3-subclass',
-  name: 'Subclass Feature',
-  actionType: 'passive',
-  description: 'You gain a feature from your chosen subclass.',
-  tags: ['subclass'],
-};
-
 // ── Level 4 ───────────────────────────────────────────────────
-
-export const featureASIL4: Feature = {
-  id: 'l4-asi',
-  name: 'Ability Score Improvement',
-  actionType: 'passive',
-  description:
-    'Increase one ability score by 2, or two ability scores by 1 each. You may take a Feat instead.',
-  tags: ['asi'],
-};
 
 // ── Level 5 ───────────────────────────────────────────────────
 
@@ -92,14 +75,6 @@ export const featureExtraAttack: Feature = {
 };
 
 // ── Level 6 ───────────────────────────────────────────────────
-
-export const featureSubclassL6: Feature = {
-  id: 'l6-subclass',
-  name: 'Subclass Feature',
-  actionType: 'passive',
-  description: 'You gain a feature from your chosen subclass.',
-  tags: ['subclass'],
-};
 
 // ── Level 7 ───────────────────────────────────────────────────
 
@@ -128,14 +103,6 @@ export const featureElementalCombo: Feature = {
 
 // ── Level 8 ───────────────────────────────────────────────────
 
-export const featureASIL8: Feature = {
-  id: 'l8-asi',
-  name: 'Ability Score Improvement',
-  actionType: 'passive',
-  description: 'Increase one ability score by 2, or two by 1. May take a Feat instead.',
-  tags: ['asi'],
-};
-
 // ── Level 9 ───────────────────────────────────────────────────
 
 export const featureImbuedStrike: Feature = {
@@ -152,23 +119,7 @@ export const featureImbuedStrike: Feature = {
 
 // ── Level 11 ──────────────────────────────────────────────────
 
-export const featureSubclassL11: Feature = {
-  id: 'l11-subclass',
-  name: 'Subclass Feature',
-  actionType: 'passive',
-  description: 'You gain a feature from your chosen subclass.',
-  tags: ['subclass'],
-};
-
 // ── Level 12 ──────────────────────────────────────────────────
-
-export const featureASIL12: Feature = {
-  id: 'l12-asi',
-  name: 'Ability Score Improvement',
-  actionType: 'passive',
-  description: 'Increase one ability score by 2, or two by 1. May take a Feat instead.',
-  tags: ['asi'],
-};
 
 // ── Level 13 ──────────────────────────────────────────────────
 
@@ -191,23 +142,7 @@ export const featureElementalResonance: Feature = {
 
 // ── Level 14 ──────────────────────────────────────────────────
 
-export const featureSubclassL14: Feature = {
-  id: 'l14-subclass',
-  name: 'Subclass Feature',
-  actionType: 'passive',
-  description: 'You gain a feature from your chosen subclass.',
-  tags: ['subclass'],
-};
-
 // ── Level 16 ──────────────────────────────────────────────────
-
-export const featureASIL16: Feature = {
-  id: 'l16-asi',
-  name: 'Ability Score Improvement',
-  actionType: 'passive',
-  description: 'Increase one ability score by 2, or two by 1. May take a Feat instead.',
-  tags: ['asi'],
-};
 
 // ── Level 17 ──────────────────────────────────────────────────
 
@@ -237,14 +172,6 @@ export const featureElementalWellspring: Feature = {
 
 // ── Level 19 ──────────────────────────────────────────────────
 
-export const featureASIL19: Feature = {
-  id: 'l19-asi',
-  name: 'Ability Score Improvement',
-  actionType: 'passive',
-  description: 'Increase one ability score by 2, or two by 1. May take a Feat instead.',
-  tags: ['asi'],
-};
-
 // ── Level 20 ──────────────────────────────────────────────────
 
 export const featureAvatarForm: Feature = {
@@ -272,22 +199,13 @@ export const elementalShaperFeatures: Feature[] = [
   ...elementalPathFeatures,
   featureElementalCharges,
   featureElementalEmbodiment,
-  featureSubclassL3,
-  featureASIL4,
   featureExtraAttack,
-  featureSubclassL6,
   featureElementalSurge,
   featureElementalCombo,
-  featureASIL8,
   featureImbuedStrike,
-  featureSubclassL11,
-  featureASIL12,
   featureElementalResonance,
-  featureSubclassL14,
-  featureASIL16,
   featureElementalOverflow,
   featureElementalWellspring,
-  featureASIL19,
   featureAvatarForm,
 ];
 
@@ -358,13 +276,23 @@ export const elementalShaperClass: Omit<GameClass, 'id'> & { id: string } = {
     {
       level: 3,
       features: [],
-      featureRefs: [featureSubclassL3.id],
+      choices: [{
+          id: 'subclass',
+          label: 'Choose Subclass',
+          type: 'subclass' as const,
+          count: 1,
+        }],
     },
     // ── Level 4 ─────────────────────────────────────────────
     {
       level: 4,
       features: [],
-      featureRefs: [featureASIL4.id],
+      choices: [{
+          id: 'asi-or-feat',
+          label: 'Ability Score Improvement or Feat',
+          type: 'feat' as const,
+          count: 1,
+        }],
     },
     // ── Level 5 ─────────────────────────────────────────────
     {
@@ -385,7 +313,6 @@ export const elementalShaperClass: Omit<GameClass, 'id'> & { id: string } = {
     {
       level: 6,
       features: [],
-      featureRefs: [featureSubclassL6.id],
     },
     // ── Level 7 ─────────────────────────────────────────────
     {
@@ -397,7 +324,12 @@ export const elementalShaperClass: Omit<GameClass, 'id'> & { id: string } = {
     {
       level: 8,
       features: [],
-      featureRefs: [featureASIL8.id],
+      choices: [{
+          id: 'asi-or-feat',
+          label: 'Ability Score Improvement or Feat',
+          type: 'feat' as const,
+          count: 1,
+        }],
     },
     // ── Level 9 ─────────────────────────────────────────────
     {
@@ -423,13 +355,17 @@ export const elementalShaperClass: Omit<GameClass, 'id'> & { id: string } = {
     {
       level: 11,
       features: [],
-      featureRefs: [featureSubclassL11.id],
     },
     // ── Level 12 ────────────────────────────────────────────
     {
       level: 12,
       features: [],
-      featureRefs: [featureASIL12.id],
+      choices: [{
+          id: 'asi-or-feat',
+          label: 'Ability Score Improvement or Feat',
+          type: 'feat' as const,
+          count: 1,
+        }],
     },
     // ── Level 13 ────────────────────────────────────────────
     {
@@ -441,7 +377,6 @@ export const elementalShaperClass: Omit<GameClass, 'id'> & { id: string } = {
     {
       level: 14,
       features: [],
-      featureRefs: [featureSubclassL14.id],
     },
     // ── Level 15 ────────────────────────────────────────────
     {
@@ -461,7 +396,12 @@ export const elementalShaperClass: Omit<GameClass, 'id'> & { id: string } = {
     {
       level: 16,
       features: [],
-      featureRefs: [featureASIL16.id],
+      choices: [{
+          id: 'asi-or-feat',
+          label: 'Ability Score Improvement or Feat',
+          type: 'feat' as const,
+          count: 1,
+        }],
     },
     // ── Level 17 ────────────────────────────────────────────
     {
@@ -479,7 +419,12 @@ export const elementalShaperClass: Omit<GameClass, 'id'> & { id: string } = {
     {
       level: 19,
       features: [],
-      featureRefs: [featureASIL19.id],
+      choices: [{
+          id: 'asi-or-feat',
+          label: 'Ability Score Improvement or Feat',
+          type: 'feat' as const,
+          count: 1,
+        }],
     },
     // ── Level 20 ────────────────────────────────────────────
     {

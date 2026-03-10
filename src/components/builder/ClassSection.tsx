@@ -73,10 +73,11 @@ export function ClassSection({ character, derivedMaxHP }: Props) {
 function getSubclassLevels(cls: GameClass): number[] {
   const levels: number[] = [];
   for (const le of cls.levelEntries) {
-    const hasSubclassFeature =
+    const hasSubclassChoice =
+      (le.choices ?? []).some(ch => ch.type === 'subclass') ||
       le.features.some(f => f.tags?.includes('subclass')) ||
       (le.featureRefs ?? []).some(id => id.match(/^l\d+-?subclass$/));
-    if (hasSubclassFeature) levels.push(le.level);
+    if (hasSubclassChoice) levels.push(le.level);
   }
   return levels;
 }
@@ -306,10 +307,22 @@ function LevelBlock({
             </span>
           )}
         </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text-2)' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-2)' }}>
           {showHpRoll && hpRoll && <span style={{ color: 'var(--accent-4)' }}>+{hpRoll.roll} HP</span>}
           {allDisplayFeatures.length > 0 && (
-            <span>{allDisplayFeatures.slice(0, 3).map(f => f.name).join(', ')}{allDisplayFeatures.length > 3 ? '…' : ''}</span>
+            <span style={{
+              background: 'var(--bg-3)', borderRadius: 4, padding: '1px 6px', fontSize: 11,
+            }}>
+              {allDisplayFeatures.length} feature{allDisplayFeatures.length !== 1 ? 's' : ''}
+            </span>
+          )}
+          {choices.length > 0 && (
+            <span style={{
+              background: 'color-mix(in srgb, var(--accent) 15%, var(--bg-3))',
+              color: 'var(--accent)', borderRadius: 4, padding: '1px 6px', fontSize: 11,
+            }}>
+              {choices.length} choice{choices.length !== 1 ? 's' : ''}
+            </span>
           )}
           <span>{collapsed ? 'v' : '^'}</span>
         </span>
@@ -353,6 +366,7 @@ function LevelBlock({
                   classId={cls.id}
                   entry={entry}
                   allDbFeatures={allDbFeatures}
+                  cls={cls}
                 />
               );
             }
@@ -622,13 +636,14 @@ function ClassPicker({ allClasses, existingClassIds, onPick, onCancel }: {
 
 // ── Path Advance Picker ────────────────────────────────────────
 
-function PathAdvancePicker({ choice, classId, entry, allDbFeatures }: {
+function PathAdvancePicker({ choice, classId, entry, allDbFeatures, cls }: {
   choice: import('@/types/game').Choice;
   classId: string;
   entry: CharacterClassEntry;
   allDbFeatures: Feature[];
+  cls: GameClass;
 }) {
-  const { advancePath } = useCharacterStore();
+  const { advancePath, resolveBuilderChoice } = useCharacterStore();
   const [expandedPath, setExpandedPath] = useState<string | null>(null);
 
   const pathIds = choice.pathFeatureIds ?? [];
@@ -687,11 +702,7 @@ function PathAdvancePicker({ choice, classId, entry, allDbFeatures }: {
                     </span>
                   )}
                 </div>
-                {isKnown && tierDef?.rechargeDescription && (
-                  <div style={{ fontSize: 11, color: 'var(--text-2)' }}>
-                    ⚡ Recharge: {tierDef.rechargeDescription}
-                  </div>
-                )}
+
               </div>
 
               {/* Tier pips */}
@@ -770,12 +781,6 @@ function PathAdvancePicker({ choice, classId, entry, allDbFeatures }: {
                         </span>
                       </div>
 
-                      {tier.rechargeDescription && (
-                        <div style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 4, paddingLeft: 30 }}>
-                          ⚡ <strong>Recharge:</strong> {tier.rechargeDescription}
-                        </div>
-                      )}
-
                       {tier.boostDescription && (
                         <div style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 4, paddingLeft: 30 }}>
                           ⬆ <strong>Boost:</strong> {tier.boostDescription}
@@ -796,9 +801,21 @@ function PathAdvancePicker({ choice, classId, entry, allDbFeatures }: {
                       ))}
 
                       {(tier.choices ?? []).map(ch => (
-                        <div key={ch.id} style={{ marginLeft: 30, fontSize: 12, color: 'var(--text-2)', fontStyle: 'italic' }}>
-                          🎲 {ch.label}:{' '}
-                          {(ch.options ?? []).map(o => o.label).join(' / ')}
+                        <div key={ch.id} style={{ marginLeft: 0, marginTop: 8 }}>
+                          {isUnlocked ? (
+                            <ChoicePicker
+                              choice={ch}
+                              resolved={entry.choices.find(r => r.choiceId === ch.id)}
+                              allResolved={entry.choices}
+                              context={{ sourceType: 'class', sourceId: cls.id, level: tier.tier }}
+                              onChange={r => resolveBuilderChoice(r, 'class')}
+                              onNestedChange={r => resolveBuilderChoice(r, 'class')}
+                            />
+                          ) : (
+                            <div style={{ fontSize: 12, color: 'var(--text-2)', fontStyle: 'italic', paddingLeft: 30 }}>
+                              🎲 {ch.label}: {(ch.options ?? []).map(o => o.label).join(' / ')}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
