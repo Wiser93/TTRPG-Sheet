@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useCharacterStore } from '@/store/characterStore';
+import { computePathProgress } from '@/lib/pathUtils';
 import { useClasses, useSubclasses, useFeatures } from '@/hooks/useGameDatabase';
 import { ChoicePicker } from '@/components/sheet/ChoicePicker';
 import type { Character, CharacterClassEntry } from '@/types/character';
@@ -638,7 +639,7 @@ function ClassPicker({ allClasses, existingClassIds, onPick, onCancel }: {
   );
 }
 
-// ── Path Advance Picker ────────────────────────────────────────
+// ── Tiered Feature Picker ─────────────────────────────────────
 
 function TieredFeaturePicker({ choice, classId, entry, allDbFeatures, cls }: {
   choice: import('@/types/game').Choice;
@@ -647,7 +648,7 @@ function TieredFeaturePicker({ choice, classId, entry, allDbFeatures, cls }: {
   allDbFeatures: Feature[];
   cls: GameClass;
 }) {
-  const { advancePath, resolveBuilderChoice } = useCharacterStore();
+  const { resolveBuilderChoice } = useCharacterStore();
   const [expandedPath, setExpandedPath] = useState<string | null>(null);
 
   const pathIds = choice.pathFeatureIds ?? [];
@@ -655,32 +656,90 @@ function TieredFeaturePicker({ choice, classId, entry, allDbFeatures, cls }: {
     .map(id => allDbFeatures.find(f => f.id === id && f.isPath))
     .filter((f): f is Feature => !!f);
 
-  const progress = entry.pathProgress ?? {};
+  // Derive current tiers from ALL resolved path_advance choices (globally)
+  const pathProgress = computePathProgress(cls, entry);
 
-  // For Harmonist-style restrictions we could add them here later
-  const maxTierForPath = (_pathId: string) => 4; // default: all 4 tiers allowed
+  // Budget for THIS specific choice
+  const resolvedHere = entry.choices.find(r => r.choiceId === choice.id);
+  const advancementsHere = resolvedHere?.selectedValues ?? [];
+  const used = advancementsHere.length;
+  const remaining = choice.count - used;
+
+  // The global max tier cap from this choice definition (applies across all choices)
+  const hardMaxTier = choice.maxTier ?? Infinity;
+
+  function handleAdvance(pathId: string) {
+    if (remaining <= 0) return;
+    const currentTier = pathProgress[pathId] ?? 0;
+    const pathFeat = pathFeatures.find(f => f.id === pathId);
+    const pathMax = pathFeat?.pathTiers?.length ?? 4;
+    if (currentTier >= hardMaxTier) return;
+    if (currentTier >= pathMax) return;
+    resolveBuilderChoice({
+      id: resolvedHere?.id ?? crypto.randomUUID(),
+      sourceType: 'class', sourceId: classId, level: 0,
+      choiceId: choice.id,
+      selectedValues: [...advancementsHere, pathId],
+    }, 'class');
+  }
+
+  function handleRevert(pathId: string) {
+    const arr = [...advancementsHere];
+    const idx = arr.lastIndexOf(pathId);
+    if (idx === -1) return;
+    arr.splice(idx, 1);
+    resolveBuilderChoice({
+      id: resolvedHere?.id ?? crypto.randomUUID(),
+      sourceType: 'class', sourceId: classId, level: 0,
+      choiceId: choice.id,
+      selectedValues: arr,
+    }, 'class');
+  }
+
+  const budgetColor = remaining === 0 ? 'var(--accent-2)' : remaining <= 1 ? 'var(--accent)' : 'var(--text-1)';
 
   return (
     <div style={{
       background: 'var(--bg-2)', border: '1px solid var(--border)',
       borderRadius: 8, overflow: 'hidden',
     }}>
-      <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)' }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>
-          {choice.label}
+      {/* Header with budget */}
+      <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>
+            {choice.label}
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--text-2)' }}>
+            Select a tiered feature to advance. Known paths show their current tier; new ones start at Tier 1.
+            {hardMaxTier < Infinity && (
+              <span style={{ marginLeft: 6, color: 'var(--text-2)' }}>Max tier: {hardMaxTier}.</span>
+            )}
+          </div>
         </div>
-        <div style={{ fontSize: 12, color: 'var(--text-2)' }}>
-          Select a tiered feature to advance. Known paths show their current tier; new ones start at Tier 1.
+        {/* Advancement budget */}
+        <div style={{
+          textAlign: 'center', flexShrink: 0, marginLeft: 12,
+          background: remaining === 0 ? 'color-mix(in srgb,var(--accent-2) 12%,var(--bg-3))' : 'color-mix(in srgb,var(--accent) 12%,var(--bg-3))',
+          border: `1px solid ${remaining === 0 ? 'color-mix(in srgb,var(--accent-2) 30%,var(--border))' : 'color-mix(in srgb,var(--accent) 30%,var(--border))'}`,
+          borderRadius: 8, padding: '6px 12px', minWidth: 64,
+        }}>
+          <div style={{ fontSize: 20, fontWeight: 700, lineHeight: 1, color: budgetColor }}>{remaining}</div>
+          <div style={{ fontSize: 10, color: 'var(--text-2)', marginTop: 2 }}>
+            {remaining === 1 ? 'advancement' : 'advancements'}<br/>remaining
+          </div>
         </div>
       </div>
 
       {pathFeatures.map(pathFeat => {
-        const currentTier = progress[pathFeat.id] ?? 0;
-        const maxTier = maxTierForPath(pathFeat.id);
+        const currentTier = pathProgress[pathFeat.id] ?? 0;
+        const pathMax = pathFeat.pathTiers?.length ?? 4;
+        const isKnown = currentTier > 0;
+        const atHardCap = currentTier >= hardMaxTier;
+        const atPathMax = currentTier >= pathMax;
+        const canAdvance = remaining > 0 && !atHardCap && !atPathMax;
+        const canRevert = advancementsHere.includes(pathFeat.id);
         const tierDef = pathFeat.pathTiers?.find(t => t.tier === currentTier);
         const nextTierDef = pathFeat.pathTiers?.find(t => t.tier === currentTier + 1);
-        const isKnown = currentTier > 0;
-        const isMaxed = currentTier >= Math.min(maxTier, pathFeat.pathTiers?.length ?? 4);
         const isExpanded = expandedPath === pathFeat.id;
         const pathColor = (pathFeat as Feature & { color?: string }).color;
         const pathIcon = (pathFeat as Feature & { icon?: string }).icon;
@@ -689,10 +748,10 @@ function TieredFeaturePicker({ choice, classId, entry, allDbFeatures, cls }: {
           <div key={pathFeat.id} style={{
             borderBottom: '1px solid var(--border)',
             borderLeft: isKnown ? `3px solid ${pathColor ?? 'var(--accent)'}` : undefined,
+            opacity: (!isKnown && !canAdvance) ? 0.45 : 1,
           }}>
-            {/* Path header row */}
             <div style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
-              {/* Icon + name */}
+              {/* Name + tier badge */}
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
                   {pathIcon && <span style={{ fontSize: 18 }}>{pathIcon}</span>}
@@ -705,8 +764,10 @@ function TieredFeaturePicker({ choice, classId, entry, allDbFeatures, cls }: {
                       Tier {currentTier} — {tierDef?.name ?? ''}
                     </span>
                   )}
+                  {atHardCap && isKnown && (
+                    <span style={{ fontSize: 10, color: 'var(--text-2)', fontStyle: 'italic' }}>cap reached</span>
+                  )}
                 </div>
-
               </div>
 
               {/* Tier pips */}
@@ -716,57 +777,49 @@ function TieredFeaturePicker({ choice, classId, entry, allDbFeatures, cls }: {
                     <div key={t.tier} style={{
                       width: 12, height: 12, borderRadius: '50%',
                       background: t.tier <= currentTier ? (pathColor ?? 'var(--accent)') : 'var(--bg-3)',
-                      border: `1px solid ${pathColor ?? 'var(--border)'}`,
+                      border: `1px solid ${t.tier <= (hardMaxTier) ? (pathColor ?? 'var(--border)') : 'var(--border)'}`,
+                      opacity: t.tier > hardMaxTier ? 0.3 : 1,
                     }} />
                   ))}
                 </div>
               )}
 
-              {/* Action button */}
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                {!isMaxed && nextTierDef && (
-                  <button
-                    className="btn btn-primary"
-                    style={{ fontSize: 12, padding: '4px 10px' }}
-                    onClick={() => advancePath(classId, pathFeat.id, currentTier + 1)}
-                  >
-                    {isKnown ? `→ ${nextTierDef.name}` : `+ ${nextTierDef?.name ?? 'Tier 1'}`}
+              {/* Action buttons */}
+              <div style={{ display: 'flex', gap: 5, alignItems: 'center', flexShrink: 0 }}>
+                {canAdvance && nextTierDef && (
+                  <button className="btn btn-primary" style={{ fontSize: 12, padding: '4px 10px' }}
+                    onClick={() => handleAdvance(pathFeat.id)}>
+                    {isKnown ? `→ ${nextTierDef.name}` : `+ ${nextTierDef.name}`}
                   </button>
                 )}
-                {isKnown && isMaxed && (
+                {canRevert && (
+                  <button className="btn btn-ghost" style={{ fontSize: 11, padding: '3px 8px', color: 'var(--accent-2)' }}
+                    title="Undo last advancement of this path"
+                    onClick={() => handleRevert(pathFeat.id)}>
+                    ↩
+                  </button>
+                )}
+                {isKnown && (atHardCap || atPathMax) && !canRevert && (
                   <span style={{ fontSize: 11, color: 'var(--text-2)', fontStyle: 'italic' }}>Maxed</span>
                 )}
-                {isKnown && (
-                  <button
-                    className="btn btn-ghost"
-                    style={{ fontSize: 11, padding: '3px 8px' }}
-                    onClick={() => setExpandedPath(isExpanded ? null : pathFeat.id)}
-                  >
-                    {isExpanded ? '▲' : '▼'}
-                  </button>
-                )}
-                {!isKnown && (
-                  <button
-                    className="btn btn-ghost"
-                    style={{ fontSize: 11, padding: '3px 8px' }}
-                    onClick={() => setExpandedPath(isExpanded ? null : pathFeat.id)}
-                  >
-                    {isExpanded ? '▲' : '▼'} Preview
-                  </button>
-                )}
+                <button className="btn btn-ghost" style={{ fontSize: 11, padding: '3px 8px' }}
+                  onClick={() => setExpandedPath(isExpanded ? null : pathFeat.id)}>
+                  {isExpanded ? '▲' : isKnown ? '▼' : '▼ Preview'}
+                </button>
               </div>
             </div>
 
-            {/* Expanded: show tier details */}
+            {/* Expanded tier tree */}
             {isExpanded && (
               <div style={{ padding: '0 14px 12px', borderTop: '1px solid var(--border)' }}>
                 {(pathFeat.pathTiers ?? []).map(tier => {
                   const isUnlocked = tier.tier <= currentTier;
                   const isNext = tier.tier === currentTier + 1;
+                  const isBeyondCap = tier.tier > hardMaxTier;
                   return (
                     <div key={tier.tier} style={{
                       margin: '10px 0',
-                      opacity: isUnlocked ? 1 : isNext ? 0.7 : 0.35,
+                      opacity: isUnlocked ? 1 : isBeyondCap ? 0.2 : isNext ? 0.65 : 0.3,
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                         <div style={{
@@ -781,7 +834,8 @@ function TieredFeaturePicker({ choice, classId, entry, allDbFeatures, cls }: {
                         <span style={{ fontWeight: 700, fontSize: 13 }}>
                           Tier {tier.tier} — {tier.name}
                           {isUnlocked && <span style={{ fontSize: 11, color: 'var(--accent)', marginLeft: 6 }}>✓ Unlocked</span>}
-                          {isNext && !isUnlocked && <span style={{ fontSize: 11, color: 'var(--text-2)', marginLeft: 6 }}>Next</span>}
+                          {isNext && !isUnlocked && !isBeyondCap && <span style={{ fontSize: 11, color: 'var(--text-2)', marginLeft: 6 }}>Next</span>}
+                          {isBeyondCap && <span style={{ fontSize: 11, color: 'var(--accent-2)', marginLeft: 6 }}>Beyond cap</span>}
                         </span>
                       </div>
 

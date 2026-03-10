@@ -1,5 +1,6 @@
 import type { Character, DerivedStats, StatBlock } from '@/types/character';
 import type { StatKey, SkillKey, Modifier, Feature, GameClass, Subclass, Species, Background, Feat } from '@/types/game';
+import { computePathProgress } from '@/lib/pathUtils';
 
 // ============================================================
 // SKILL → STAT MAPPING
@@ -98,8 +99,9 @@ export function deriveStats(character: Character, gameData: GameData): DerivedSt
     }
 
     // Path features — load features from each unlocked tier
-    if (classEntry.pathProgress) {
-      for (const [pathId, tier] of Object.entries(classEntry.pathProgress)) {
+    // Progress is derived from resolved path_advance choices, not stored separately
+    const pathProgress = computePathProgress(cls, classEntry);
+    for (const [pathId, tier] of Object.entries(pathProgress)) {
         const pathFeat = gameData.features?.find(f => f.id === pathId && f.isPath);
         if (!pathFeat?.pathTiers) continue;
         // Add the path feature itself once
@@ -138,7 +140,6 @@ export function deriveStats(character: Character, gameData: GameData): DerivedSt
             }
           }
         }
-      }
     }
 
     if (classEntry.subclassId) {

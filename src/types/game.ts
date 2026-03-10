@@ -116,6 +116,12 @@ export interface Choice {
   dbSource?: ChoiceDbSource;
   /** For type='path_advance': IDs of path Features the player may advance */
   pathFeatureIds?: string[];
+  /**
+   * For type='path_advance': optional cap on how high any single path can be advanced.
+   * e.g. maxTier=1 means each path can only ever reach Tier 1 from this choice.
+   * Enforced globally — all path_advance choices for the class share the same pathProgress.
+   */
+  maxTier?: number;
 }
 
 // ============================================================

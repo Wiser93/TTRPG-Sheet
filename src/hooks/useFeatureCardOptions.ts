@@ -1,4 +1,5 @@
 import { useCharacterStore } from '@/store/characterStore';
+import { computePathProgress } from '@/lib/pathUtils';
 import { useClasses, useFeatures } from '@/hooks/useGameDatabase';
 import type { Feature } from '@/types/game';
 import type { DBClass } from '@/db/schema';
@@ -30,8 +31,11 @@ export function useFeatureCardOptions(feature: Feature): CardOption[] {
   if (src.pathBased) {
     const options: CardOption[] = [];
     for (const classEntry of char.classes) {
-      for (const [pathId, _tier] of Object.entries(classEntry.pathProgress ?? {})) {
-        // Look up the path feature for display metadata
+      // Find the class definition to derive path progress from resolved choices
+      const clsDef = allClasses.find(c => c.id === classEntry.classId);
+      if (!clsDef) continue;
+      const pathProgress = computePathProgress(clsDef, classEntry);
+      for (const [pathId] of Object.entries(pathProgress)) {
         const pathFeat = allDbFeatures.find(f => f.id === pathId && f.isPath);
         if (!pathFeat) continue;
         if (options.some(o => o.id === pathId)) continue;

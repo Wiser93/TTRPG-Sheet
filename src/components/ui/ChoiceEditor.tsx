@@ -345,15 +345,30 @@ function PathAdvanceEditor({ choice, onChange }: { choice: Choice; onChange: (p:
   const selected = choice.pathFeatureIds ?? [];
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <LabeledInput label="Label (optional)" value={choice.label} placeholder="Choose an Tiered Feature"
+      <LabeledInput label="Label (optional)" value={choice.label} placeholder="Choose a Tiered Feature"
         onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange({ label: e.target.value })} />
       <FormRow>
-        <LabeledInput label="Choose (count)" type="number" min={1} value={choice.count}
+        <LabeledInput label="Advancements granted" type="number" min={1} value={choice.count}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange({ count: Number(e.target.value) })} />
+        <LabeledInput label="Max tier cap (optional)" type="number" min={1} max={10}
+          value={choice.maxTier ?? ''}
+          placeholder="No limit"
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            onChange({ maxTier: e.target.value ? Number(e.target.value) : undefined })} />
       </FormRow>
+      {(choice.maxTier ?? 0) > 0 && (
+        <div style={{
+          fontSize: 12, color: 'var(--text-1)',
+          background: 'color-mix(in srgb,var(--accent) 8%,var(--bg-2))',
+          border: '1px solid color-mix(in srgb,var(--accent) 25%,var(--border))',
+          borderRadius: 6, padding: '7px 10px',
+        }}>
+          ⚠ Max tier {choice.maxTier} — paths in this class can never exceed this tier globally.
+        </div>
+      )}
       <div>
         <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-2)', marginBottom: 6 }}>
-          Available paths
+          Available tiered features
         </p>
         {pathFeatures.length === 0 ? (
           <p style={{ fontSize: 12, color: 'var(--text-2)', fontStyle: 'italic' }}>
