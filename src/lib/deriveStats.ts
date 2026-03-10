@@ -101,7 +101,22 @@ export function deriveStats(character: Character, gameData: GameData): DerivedSt
     // Path features — load features from each unlocked tier
     // Progress is derived from resolved path_advance choices, not stored separately
     const pathProgress = computePathProgress(cls, classEntry);
-    for (const [pathId, tier] of Object.entries(pathProgress)) {
+
+    // Collect subclass overrides (if a subclass is chosen)
+    const subclassOverrideMaxTier: number = (() => {
+      if (!classEntry.subclassId) return Infinity;
+      const sub = gameData.subclasses?.find(s => s.id === classEntry.subclassId);
+      if (!sub?.classOverrides?.length) return Infinity;
+      let cap = Infinity;
+      for (const ov of sub.classOverrides) {
+        if (ov.type === 'path_max_tier') cap = Math.min(cap, ov.value);
+      }
+      return cap;
+    })();
+
+    for (const [pathId, rawTier] of Object.entries(pathProgress)) {
+      // Apply the subclass override — character can't benefit from tiers above the cap
+      const tier = Math.min(rawTier, subclassOverrideMaxTier);
         const pathFeat = gameData.features?.find(f => f.id === pathId && f.isPath);
         if (!pathFeat?.pathTiers) continue;
         // Add the path feature itself once

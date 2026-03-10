@@ -649,6 +649,7 @@ function TieredFeaturePicker({ choice, classId, entry, allDbFeatures, cls }: {
   cls: GameClass;
 }) {
   const { resolveBuilderChoice } = useCharacterStore();
+  const allSubclasses = useSubclasses(cls.id) ?? [];
   const [expandedPath, setExpandedPath] = useState<string | null>(null);
 
   const pathIds = choice.pathFeatureIds ?? [];
@@ -665,8 +666,19 @@ function TieredFeaturePicker({ choice, classId, entry, allDbFeatures, cls }: {
   const used = advancementsHere.length;
   const remaining = choice.count - used;
 
-  // The global max tier cap from this choice definition (applies across all choices)
-  const hardMaxTier = choice.maxTier ?? Infinity;
+  // Compute effective maxTier: min of the choice's own cap and any active subclass override
+  const subclass = entry.subclassId ? allSubclasses.find(s => s.id === entry.subclassId) : undefined;
+  const subclassMaxTier: number = (() => {
+    if (!subclass?.classOverrides?.length) return Infinity;
+    let cap = Infinity;
+    for (const ov of subclass.classOverrides) {
+      if (ov.type !== 'path_max_tier') continue;
+      if (ov.choiceIds && !ov.choiceIds.includes(choice.id)) continue;
+      cap = Math.min(cap, ov.value);
+    }
+    return cap;
+  })();
+  const hardMaxTier = Math.min(choice.maxTier ?? Infinity, subclassMaxTier);
 
   function handleAdvance(pathId: string) {
     if (remaining <= 0) return;

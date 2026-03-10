@@ -135,7 +135,7 @@ export function FeatureForm({ initial, onSave, isSaving }: Props) {
       isCard:             f.isCard || undefined,
       cardTab:            f.isCard ? (f.cardTab ?? 'combat') : undefined,
       cardSelectionLabel: f.isCard && f.cardSelectionLabel?.trim() ? f.cardSelectionLabel.trim() : undefined,
-      cardOptionSource:   f.isCard ? f.cardOptionSource : undefined,
+      cardOptionSource:   f.isCard ? f.cardOptionSource ?? undefined : undefined,
       cardOptions:        (f.isCard && !f.cardOptionSource && f.cardOptions?.length) ? f.cardOptions : undefined,
     });
   }
@@ -449,8 +449,8 @@ function FormulaBuilder({ terms, onChange }: {
 type CardState = { id: string; label: string; description?: string; color?: string; icon?: string };
 
 function CardSection({ f, patch }: {
-  f: Partial<Feature> & { isCard?: boolean; cardTab?: string; cardSelectionLabel?: string; cardOptionSource?: { choiceId: string }; cardOptions?: CardState[] };
-  patch: (changes: Partial<Feature & { isCard: boolean; cardTab: string; cardSelectionLabel: string; cardOptionSource?: { choiceId: string }; cardOptions: CardState[] }>) => void;
+  f: Partial<Feature> & { isCard?: boolean; cardTab?: string; cardSelectionLabel?: string; cardOptionSource?: { choiceId?: string; pathBased?: boolean }; cardOptions?: CardState[] };
+  patch: (changes: Partial<Feature & { isCard: boolean; cardTab: string; cardSelectionLabel: string; cardOptionSource?: { choiceId?: string; pathBased?: boolean }; cardOptions: CardState[] }>) => void;
 }) {
   const [newOptId, setNewOptId] = React.useState('');
   const [newOptLabel, setNewOptLabel] = React.useState('');
@@ -458,7 +458,7 @@ function CardSection({ f, patch }: {
   const [newOptIcon, setNewOptIcon] = React.useState('');
 
   const options: CardState[] = f.cardOptions ?? [];
-  const useSource = Boolean(f.cardOptionSource);
+  const sourceMode: 'none' | 'path' | 'choice' = !f.cardOptionSource ? 'none' : (f.cardOptionSource as {pathBased?: boolean}).pathBased ? 'path' : 'choice';
 
   function addOption() {
     if (!newOptId.trim() || !newOptLabel.trim()) return;
@@ -522,29 +522,43 @@ function CardSection({ f, patch }: {
             <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-2)', marginBottom: 8 }}>
               Card States / Options
             </p>
-            <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+            <div style={{ display: 'flex', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
-                <input type="radio" checked={!useSource}
+                <input type="radio" checked={sourceMode === 'none'}
                   onChange={() => (patch as (c: object) => void)({ cardOptionSource: undefined })}
                   style={{ accentColor: 'var(--accent)' }} />
                 Define states manually
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
-                <input type="radio" checked={useSource}
+                <input type="radio" checked={sourceMode === 'path'}
+                  onChange={() => (patch as (c: object) => void)({ cardOptionSource: { pathBased: true } })}
+                  style={{ accentColor: 'var(--accent)' }} />
+                Populate from tiered feature progress
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
+                <input type="radio" checked={sourceMode === 'choice'}
                   onChange={() => (patch as (c: object) => void)({ cardOptionSource: { choiceId: '' } })}
                   style={{ accentColor: 'var(--accent)' }} />
                 Populate from a class choice
               </label>
             </div>
 
+            {/* Path-based: shows whatever tiered features the character has unlocked */}
+            {sourceMode === 'path' && (
+              <p style={{ fontSize: 11, color: 'var(--text-2)', background: 'var(--bg-2)', borderRadius: 5, padding: '6px 10px' }}>
+                Options will be the tiered feature paths the character has advanced (e.g. Water, Earth, Fire, Air).
+                Color and icon come from the path feature definitions.
+              </p>
+            )}
+
             {/* From choice ID */}
-            {useSource && (
+            {sourceMode === 'choice' && (
               <div>
                 <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>
                   Choice ID
                 </label>
                 <input
-                  value={f.cardOptionSource?.choiceId ?? ''}
+                  value={(f.cardOptionSource as {choiceId?: string})?.choiceId ?? ''}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => (patch as (c: object) => void)({ cardOptionSource: { choiceId: e.target.value } })}
                   placeholder="e.g. elemental_path" />
                 <p style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 4 }}>
@@ -555,7 +569,7 @@ function CardSection({ f, patch }: {
             )}
 
             {/* Manual states */}
-            {!useSource && (
+            {sourceMode === 'none' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {/* Existing options */}
                 {options.map(opt => (
@@ -611,13 +625,13 @@ function CardSection({ f, patch }: {
           </div>
 
           {/* Preview */}
-          {(options.length > 0 || useSource) && (
+          {(options.length > 0 || sourceMode !== 'none') && (
             <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10 }}>
               <p style={{ fontSize: 11, color: 'var(--text-2)', marginBottom: 8 }}>Preview</p>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {useSource ? (
+                {sourceMode !== 'none' ? (
                   <span style={{ fontSize: 12, color: 'var(--text-2)', fontStyle: 'italic' }}>
-                    Options will appear here at runtime from choice "{f.cardOptionSource?.choiceId}".
+                    Options will appear here at runtime based on the card source setting.
                   </span>
                 ) : options.map(opt => (
                   <span key={opt.id} style={{

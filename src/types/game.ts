@@ -384,6 +384,22 @@ export interface SpellcastingConfig {
   ritualCasting?: boolean;
 }
 
+/**
+ * A targeted override that a subclass applies to its parent class's mechanics.
+ * Applied before choices are resolved, so they cap/modify class-level choices.
+ */
+export interface ClassOverride {
+  /** Which class mechanic is being modified */
+  type: 'path_max_tier';
+  /** The new value (e.g. max tier number) */
+  value: number;
+  /**
+   * If set, only apply to choices with one of these IDs.
+   * If omitted, applies to all choices of the relevant type in the class.
+   */
+  choiceIds?: string[];
+}
+
 export interface Subclass {
   id: string;
   parentClassId: string;
@@ -392,6 +408,12 @@ export interface Subclass {
   /** Which class level the subclass is chosen at */
   chosenAtLevel: number;
   levelEntries: ClassLevelEntry[];
+  /**
+   * Overrides that this subclass applies to the parent class's mechanics.
+   * e.g. capping tiered feature advancement at Tier 1 until a higher-level
+   * subclass feature removes or raises the cap.
+   */
+  classOverrides?: ClassOverride[];
   customFields?: Record<string, unknown>;
 }
 
