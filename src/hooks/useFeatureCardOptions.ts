@@ -1,6 +1,6 @@
 import { useCharacterStore } from '@/store/characterStore';
 import { computePathProgress } from '@/lib/pathUtils';
-import { useClasses, useFeatures } from '@/hooks/useGameDatabase';
+import { useClasses, useSubclasses, useFeatures } from '@/hooks/useGameDatabase';
 import type { Feature } from '@/types/game';
 import type { DBClass } from '@/db/schema';
 
@@ -15,6 +15,7 @@ export type CardOption = {
 export function useFeatureCardOptions(feature: Feature): CardOption[] {
   const maybeCharacter = useCharacterStore(s => s.character);
   const allClasses = (useClasses() ?? []) as DBClass[];
+  const allSubclasses = useSubclasses() ?? [];
   const allDbFeatures = useFeatures() ?? [];
 
   if (!feature.isCard) return [];
@@ -34,7 +35,10 @@ export function useFeatureCardOptions(feature: Feature): CardOption[] {
       // Find the class definition to derive path progress from resolved choices
       const clsDef = allClasses.find(c => c.id === classEntry.classId);
       if (!clsDef) continue;
-      const pathProgress = computePathProgress(clsDef, classEntry);
+      const activeSub = classEntry.subclassId
+        ? allSubclasses.find(s => s.id === classEntry.subclassId)
+        : undefined;
+      const pathProgress = computePathProgress(clsDef, classEntry, activeSub as import('@/types/game').Subclass | undefined);
       for (const [pathId] of Object.entries(pathProgress)) {
         const pathFeat = allDbFeatures.find(f => f.id === pathId && f.isPath);
         if (!pathFeat) continue;

@@ -6,32 +6,43 @@
  * never stored as a separate field; it is always recomputed from choices.
  */
 
-import type { GameClass } from '@/types/game';
+import type { GameClass, Subclass } from '@/types/game';
 import type { CharacterClassEntry } from '@/types/character';
 
 /**
  * Returns { pathId: currentTier } derived from all resolved path_advance
- * choices for one class entry. Each occurrence of a path ID in a resolved
- * choice's selectedValues counts as one tier advancement.
+ * choices for one class entry.
+ *
+ * IMPORTANT: subclass-granted advancements also count.  Pass the active
+ * subclass (if any) so its level-entry path_advance choices are included
+ * in the whitelist.  Without it, advancements recorded via subclass choices
+ * would be silently ignored everywhere.
  */
 export function computePathProgress(
   cls: GameClass,
   classEntry: CharacterClassEntry,
+  subclass?: Subclass,
 ): Record<string, number> {
   const progress: Record<string, number> = {};
 
-  // Collect IDs of all path_advance choices in this class
+  // Build the whitelist of choice IDs that represent path advancements.
+  // Scan both the class AND the active subclass (their level entries +
+  // creation choices) so subclass-sourced advancements are recognised.
   const pathChoiceIds = new Set<string>();
-  for (const le of cls.levelEntries ?? []) {
-    for (const ch of le.choices ?? []) {
+
+  function scanChoices(choices: { id: string; type: string }[] | undefined) {
+    for (const ch of choices ?? []) {
       if (ch.type === 'path_advance') pathChoiceIds.add(ch.id);
     }
   }
-  for (const ch of cls.creationChoices ?? []) {
-    if (ch.type === 'path_advance') pathChoiceIds.add(ch.id);
-  }
 
-  // Count advancements
+  for (const le of cls.levelEntries ?? [])        scanChoices(le.choices);
+  scanChoices(cls.creationChoices);
+  for (const le of subclass?.levelEntries ?? [])  scanChoices(le.choices);
+  scanChoices((subclass as { creationChoices?: { id: string; type: string }[] } | undefined)?.creationChoices);
+
+  // Count advancements from all resolved choices whose choiceId is in the
+  // whitelist.  Each occurrence of a pathId counts as one tier.
   for (const resolved of classEntry.choices ?? []) {
     if (!pathChoiceIds.has(resolved.choiceId)) continue;
     for (const pathId of resolved.selectedValues) {

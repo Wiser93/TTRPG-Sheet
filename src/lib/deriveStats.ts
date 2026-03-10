@@ -100,15 +100,19 @@ export function deriveStats(character: Character, gameData: GameData): DerivedSt
 
     // Path features — load features from each unlocked tier
     // Progress is derived from resolved path_advance choices, not stored separately
-    const pathProgress = computePathProgress(cls, classEntry);
+    // We look up the subclass first so we can pass it to computePathProgress —
+    // subclass level entries may contain their own path_advance choices.
+    const activeSubclass = classEntry.subclassId
+      ? gameData.subclasses?.find(s => s.id === classEntry.subclassId)
+      : undefined;
+    const pathProgress = computePathProgress(cls, classEntry, activeSubclass);
 
     // Collect subclass overrides (if a subclass is chosen)
     const subclassOverrideMaxTier: number = (() => {
       if (!classEntry.subclassId) return Infinity;
-      const sub = gameData.subclasses?.find(s => s.id === classEntry.subclassId);
-      if (!sub?.classOverrides?.length) return Infinity;
+      if (!activeSubclass?.classOverrides?.length) return Infinity;
       let cap = Infinity;
-      for (const ov of sub.classOverrides) {
+      for (const ov of activeSubclass.classOverrides) {
         if (ov.type === 'path_max_tier') cap = Math.min(cap, ov.value);
       }
       return cap;
@@ -369,6 +373,15 @@ export function deriveStats(character: Character, gameData: GameData): DerivedSt
   resolveChoiceProfs(speciesCreationChoices, character.speciesChoices);
   const bgCreationChoices = gameData.backgrounds.find(b => b.id === character.backgroundId)?.creationChoices ?? [];
   resolveChoiceProfs(bgCreationChoices, character.backgroundChoices);
+
+  // Apply class fixed proficiencies
+  for (const classEntry of character.classes) {
+    const cls = gameData.classes.find(c => c.id === classEntry.classId);
+    if (!cls) continue;
+    extraArmorProfs.push(...(cls.armorProficiencies ?? []));
+    extraWeaponProfs.push(...(cls.weaponProficiencies ?? []));
+    extraToolProfs.push(...(cls.toolProficiencies ?? []));
+  }
 
   // Apply species fixed proficiencies
   if (character.speciesId) {

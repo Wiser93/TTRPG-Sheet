@@ -657,17 +657,18 @@ function TieredFeaturePicker({ choice, classId, entry, allDbFeatures, cls }: {
     .map(id => allDbFeatures.find(f => f.id === id && f.isPath))
     .filter((f): f is Feature => !!f);
 
+  // Compute effective maxTier: min of the choice's own cap and any active subclass override
+  const subclass = entry.subclassId ? allSubclasses.find(s => s.id === entry.subclassId) : undefined;
+
   // Derive current tiers from ALL resolved path_advance choices (globally)
-  const pathProgress = computePathProgress(cls, entry);
+  // Pass subclass so its path_advance choice IDs are included in the whitelist
+  const pathProgress = computePathProgress(cls, entry, subclass);
 
   // Budget for THIS specific choice
   const resolvedHere = entry.choices.find(r => r.choiceId === choice.id);
   const advancementsHere = resolvedHere?.selectedValues ?? [];
   const used = advancementsHere.length;
   const remaining = choice.count - used;
-
-  // Compute effective maxTier: min of the choice's own cap and any active subclass override
-  const subclass = entry.subclassId ? allSubclasses.find(s => s.id === entry.subclassId) : undefined;
   const subclassMaxTier: number = (() => {
     if (!subclass?.classOverrides?.length) return Infinity;
     let cap = Infinity;

@@ -84,6 +84,11 @@ interface CharacterStore {
   /** Set a single base stat */
   setBaseStat: (stat: import('@/types/game').StatKey, value: number) => void;
 
+  // ── Bio / Meta ─────────────────────────────────────────────
+  patchMeta: (changes: Partial<import('@/types/character').CharacterMeta>) => void;
+  patchAppearance: (changes: Partial<import('@/types/character').CharacterAppearance>) => void;
+  patchBiography: (changes: Partial<import('@/types/character').CharacterBiography>) => void;
+
   // ── Elemental Embodiment ──────────────────────────────────
   setFeatureCardState: (featureId: string, value: string | null) => void;
 
@@ -382,6 +387,17 @@ export const useCharacterStore = create<CharacterStore>()(
 
     setBaseStat: (stat, value) => mutate(set, get, c => {
       c.stats.base[stat] = value;
+    }),
+
+    // ── Bio / Meta ──────────────────────────────────────────
+    patchMeta: (changes) => mutate(set, get, c => {
+      Object.assign(c.meta, changes);
+    }),
+    patchAppearance: (changes) => mutate(set, get, c => {
+      c.appearance = { ...c.appearance, ...changes };
+    }),
+    patchBiography: (changes) => mutate(set, get, c => {
+      c.biography = { ...c.biography, ...changes };
     }),
 
     // ── Elemental Embodiment ─────────────────────────────────
