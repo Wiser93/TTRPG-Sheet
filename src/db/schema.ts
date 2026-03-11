@@ -45,7 +45,7 @@ export class AppDatabase extends Dexie {
   species!: Table<DBSpecies>;
   backgrounds!: Table<DBBackground>;
   features!: Table<DBFeature>;
-  weaponProperties!: Table<import('@/types/game').ItemProperty & { updatedAt?: string; deletedAt?: string }>;
+  itemProperties!: Table<import('@/types/game').ItemProperty & { updatedAt?: string; deletedAt?: string }>;
 
   // Character data
   characters!: Table<DBCharacter>;
@@ -72,6 +72,17 @@ export class AppDatabase extends Dexie {
     // ── Version 2: weapon property definitions ─────────────
     this.version(2).stores({
       weaponProperties: '&id, name, updatedAt, deletedAt',
+    });
+
+    // ── Version 3: rename weaponProperties → itemProperties ─
+    this.version(3).stores({
+      itemProperties:   '&id, name, updatedAt, deletedAt',
+      weaponProperties: null, // drop old table
+    }).upgrade(async tx => {
+      const existing = await tx.table('weaponProperties').toArray();
+      if (existing.length > 0) {
+        await tx.table('itemProperties').bulkAdd(existing);
+      }
     });
   }
 }

@@ -157,5 +157,5 @@ export function useFeaturesBySource(sourceId: string | undefined) {
 
 /** Live list of all weapon property definitions */
 export function useItemProperties() {
-  return useLiveQuery(() => live(db.weaponProperties).sortBy('name'), []);
+  return useLiveQuery(() => live(db.itemProperties).sortBy('name'), []);
 }

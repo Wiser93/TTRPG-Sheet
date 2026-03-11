@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useUIStore } from '@/store/uiStore';
 import { useItems, useSpells, useClasses, useSubclasses, useFeats, useAllSpecies, useBackgrounds, useFeatures, useItemProperties } from '@/hooks/useGameDatabase';
-import { upsertItem, deleteItem, upsertSpell, deleteSpell, upsertClass, deleteClass, upsertFeat, deleteFeat, upsertSpecies, deleteSpecies, upsertBackground, deleteBackground, upsertFeature, deleteFeature, upsertSubclass, deleteSubclass, upsertWeaponProperty, deleteWeaponProperty } from '@/db/gameDatabase';
+import { upsertItem, deleteItem, upsertSpell, deleteSpell, upsertClass, deleteClass, upsertFeat, deleteFeat, upsertSpecies, deleteSpecies, upsertBackground, deleteBackground, upsertFeature, deleteFeature, upsertSubclass, deleteSubclass, upsertItemProperty, deleteItemProperty } from '@/db/gameDatabase';
 import { elementalShaperClass, elementalShaperFeatures } from '@/data/elementalShaper';
 import { theHarmonist, theHarmonistFeatures } from '@/data/theHarmonist';
 import { SlidePanel } from '@/components/ui/SlidePanel';
@@ -14,7 +14,7 @@ import { BackgroundForm } from './forms/BackgroundForm';
 import { FeatureForm } from './forms/FeatureForm';
 import { SubclassForm } from './forms/SubclassForm';
 import { PropertyForm } from './forms/PropertyForm';
-import type { Item, Spell, GameClass, Subclass, Feat, Species, Background, Feature, WeaponProperty } from '@/types/game';
+import type { Item, Spell, GameClass, Subclass, Feat, Species, Background, Feature, ItemProperty } from '@/types/game';
 
 type SectionKey = 'items' | 'spells' | 'classes' | 'subclasses' | 'feats' | 'species' | 'backgrounds' | 'features' | 'properties';
 
@@ -27,7 +27,7 @@ type EditTarget =
   | { type: 'backgrounds'; record?: Background }
   | { type: 'features'; record?: Feature }
   | { type: 'subclasses'; record?: Subclass }
-  | { type: 'properties'; record?: WeaponProperty };
+  | { type: 'properties'; record?: ItemProperty };
 
 export function DatabaseView() {
   const { databaseSection, setDatabaseSection, setView } = useUIStore();
@@ -39,7 +39,7 @@ export function DatabaseView() {
   const backgrounds = useBackgrounds();
   const features = useFeatures();
   const subclasses = useSubclasses();
-  const weaponProperties = useItemProperties();
+  const itemProperties = useItemProperties();
 
   const [editing, setEditing] = useState<EditTarget | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -83,7 +83,7 @@ export function DatabaseView() {
     { key: 'backgrounds' as const, label: 'Backgrounds', icon: '📖',  data: backgrounds },
     { key: 'features' as const,    label: 'Features',    icon: '⚡',  data: features },
     { key: 'subclasses' as const,  label: 'Subclasses',  icon: '🌀',  data: subclasses },
-    { key: 'properties' as const,  label: 'Properties',  icon: '🏷️',  data: weaponProperties },
+    { key: 'properties' as const,  label: 'Properties',  icon: '🏷️',  data: itemProperties },
   ];
 
   const active = sections.find(s => s.key === databaseSection)!;
@@ -104,7 +104,7 @@ export function DatabaseView() {
       else if (editing?.type === 'backgrounds') await upsertBackground({ ...(data as Omit<Background,'id'>), id });
       else if (editing?.type === 'features')    await upsertFeature({ ...(data as Omit<Feature,'id'>), id });
       else if (editing?.type === 'subclasses')  await upsertSubclass({ ...(data as Omit<Subclass,'id'>), id });
-      else if (editing?.type === 'properties')  await upsertWeaponProperty({ ...(data as Omit<WeaponProperty,'id'>), id });
+      else if (editing?.type === 'properties')  await upsertItemProperty({ ...(data as Omit<ItemProperty,'id'>), id });
       setEditing(null);
     } finally {
       setIsSaving(false);
@@ -124,7 +124,7 @@ export function DatabaseView() {
     else if (type === 'species')     await deleteSpecies(id);
     else if (type === 'backgrounds') await deleteBackground(id);
     else if (type === 'subclasses')  await deleteSubclass(id);
-    else if (type === 'properties')   await deleteWeaponProperty(id);
+    else if (type === 'properties')   await deleteItemProperty(id);
   }
 
   async function handleDeleteClass(id: string) {

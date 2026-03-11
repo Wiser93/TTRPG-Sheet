@@ -273,9 +273,6 @@ export interface Feature {
 // WEAPON PROPERTY DEFINITIONS
 // ============================================================
 
-/** @deprecated renamed to ItemProperty */
-export type WeaponProperty = ItemProperty;
-
 export interface ItemProperty {
   id: string;
   /** Canonical name, e.g. "finesse", "light", "mastery", "stealth disadvantage" */
