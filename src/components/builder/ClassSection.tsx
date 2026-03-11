@@ -530,7 +530,8 @@ function HpRollEditor({ level, hitDie, roll, isFirstLevel, onSet }: {
   onSet: (roll: number) => void;
 }) {
   const avg = Math.ceil((hitDie + 1) / 2);
-  const displayRoll = roll ?? (isFirstLevel ? hitDie : avg);
+  const committedRoll = roll ?? (isFirstLevel ? hitDie : avg);
+  const [localStr, setLocalStr] = useState<string | null>(null);
 
   return (
     <div style={{
@@ -555,20 +556,22 @@ function HpRollEditor({ level, hitDie, roll, isFirstLevel, onSet }: {
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <input
             type="number"
-            min={1}
-            max={hitDie}
-            value={displayRoll}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              onSet(Math.max(1, Math.min(hitDie, Number(e.target.value))))}
+            value={localStr ?? committedRoll}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLocalStr(e.target.value)}
+            onBlur={() => {
+              const parsed = parseInt(localStr ?? '', 10);
+              if (!isNaN(parsed)) onSet(Math.max(1, Math.min(hitDie, parsed)));
+              setLocalStr(null);
+            }}
             style={{ width: 52, textAlign: 'center', fontSize: 17, fontWeight: 700 }}
           />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <button className="btn btn-ghost" style={{ fontSize: 11, padding: '2px 6px' }}
-              onClick={() => onSet(hitDie)}>Max</button>
+              onClick={() => { setLocalStr(null); onSet(hitDie); }}>Max</button>
             <button className="btn btn-ghost" style={{ fontSize: 11, padding: '2px 6px' }}
-              onClick={() => onSet(avg)}>Avg</button>
+              onClick={() => { setLocalStr(null); onSet(avg); }}>Avg</button>
             <button className="btn btn-ghost" style={{ fontSize: 11, padding: '2px 6px' }}
-              onClick={() => onSet(Math.max(1, Math.floor(Math.random() * hitDie) + 1))}>Roll</button>
+              onClick={() => { setLocalStr(null); onSet(Math.max(1, Math.floor(Math.random() * hitDie) + 1)); }}>Roll</button>
           </div>
         </div>
       )}

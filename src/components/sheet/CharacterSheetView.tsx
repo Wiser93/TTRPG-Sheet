@@ -7,7 +7,7 @@ import { InventoryTab } from './tabs/InventoryTab';
 import { FeaturesTab } from './tabs/FeaturesTab';
 import { BioTab } from './tabs/BioTab';
 
-const TABS: { key: SheetTab; label: string; icon: string }[] = [
+const ALL_TABS: { key: SheetTab; label: string; icon: string }[] = [
   { key: 'overview',  label: 'Overview',  icon: '⚔️' },
   { key: 'combat',    label: 'Combat',    icon: '🛡️' },
   { key: 'spells',    label: 'Spells',    icon: '✨' },
@@ -19,6 +19,11 @@ const TABS: { key: SheetTab; label: string; icon: string }[] = [
 export function CharacterSheetView() {
   const { activeCharacterId, sheetTab, setSheetTab, closeCharacter, openBuilder } = useUIStore();
   const { character, derived, isLoaded } = useCharacter(activeCharacterId);
+
+  const TABS = ALL_TABS.filter(t => {
+    if (t.key === 'spells' && character?.sheetConfig?.hideSpellsTab) return false;
+    return true;
+  });
 
   if (!isLoaded || !character || !derived) {
     return (

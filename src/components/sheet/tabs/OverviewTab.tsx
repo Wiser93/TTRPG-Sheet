@@ -41,29 +41,57 @@ interface Props { character: Character; derived: DerivedStats; }
 
 export function OverviewTab({ character, derived }: Props) {
   const { setCurrentHP, shortRest, longRest, setFeatureCardState, setInspiration } = useCharacterStore();
+  // Local HP string — allows empty while editing, validated on blur
+  const [hpStr, setHpStr] = useState<string | null>(null);
   const [restReminder, setRestReminder] = useState<{ type: 'short' | 'long'; features: Feature[] } | null>(null);
   const [shortRestOpen, setShortRestOpen] = useState(false);
-  // diceToSpend: { classId -> count } — how many dice queued to spend
-  const [diceToSpend, setDiceToSpend] = useState<Record<string, number>>({});
-  // diceRolls: individual roll results accumulated this rest
-  const [diceRolls, setDiceRolls] = useState<number[]>([]);
+  // diceRolls: per-class entries { classId, value } so we can undo per class
+  const [diceRolls, setDiceRolls] = useState<{ classId: string; value: number }[]>([]);
+  // manualInput: per-class string for typing a manual roll value
+  const [manualInput, setManualInput] = useState<Record<string, string>>({});
+
+  // Derived: spending = dice spent this rest session per class
+  const diceToSpend = diceRolls.reduce<Record<string, number>>((acc, r) => {
+    acc[r.classId] = (acc[r.classId] ?? 0) + 1;
+    return acc;
+  }, {});
 
   function handleShortRest() {
-    setDiceToSpend({});
     setDiceRolls([]);
+    setManualInput({});
     setShortRestOpen(true);
   }
 
-  function rollDie(sides: number, classId: string) {
+  function rollDie(sides: number, classId: string, hd: { available: number }) {
+    const spending = diceToSpend[classId] ?? 0;
+    if (spending >= hd.available) return;
     const roll = Math.floor(Math.random() * sides) + 1;
     const conMod = derived.statMods.constitution;
     const total = Math.max(1, roll + conMod);
-    setDiceRolls(prev => [...prev, total]);
-    setDiceToSpend(prev => ({ ...prev, [classId]: (prev[classId] ?? 0) + 1 }));
+    setDiceRolls(prev => [...prev, { classId, value: total }]);
+  }
+
+  function spendDieManual(classId: string, hd: { die: number; available: number }) {
+    const spending = diceToSpend[classId] ?? 0;
+    if (spending >= hd.available) return;
+    const raw = parseInt(manualInput[classId] ?? '', 10);
+    if (isNaN(raw)) return;
+    const conMod = derived.statMods.constitution;
+    const clamped = Math.max(1, Math.min(hd.die, raw));
+    const total = Math.max(1, clamped + conMod);
+    setDiceRolls(prev => [...prev, { classId, value: total }]);
+    setManualInput(prev => ({ ...prev, [classId]: '' }));
+  }
+
+  function undoLastDie(classId: string) {
+    // Remove the most recent roll for this classId
+    const idx = [...diceRolls].map((r, i) => ({ r, i })).reverse().find(x => x.r.classId === classId)?.i;
+    if (idx === undefined) return;
+    setDiceRolls(prev => prev.filter((_, i) => i !== idx));
   }
 
   function confirmShortRest() {
-    const totalHeal = diceRolls.reduce((s, n) => s + n, 0);
+    const totalHeal = diceRolls.reduce((s, r) => s + r.value, 0);
     shortRest(totalHeal, diceToSpend);
     setShortRestOpen(false);
     const triggered = derived.allFeatures.filter(f => {
@@ -136,8 +164,13 @@ export function OverviewTab({ character, derived }: Props) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
           <input
             type="number"
-            value={character.health.current}
-            onChange={e => setCurrentHP(Number(e.target.value))}
+            value={hpStr ?? character.health.current}
+            onChange={e => setHpStr(e.target.value)}
+            onBlur={() => {
+              const parsed = parseInt(hpStr ?? '', 10);
+              setCurrentHP(isNaN(parsed) ? character.health.current : Math.max(0, parsed));
+              setHpStr(null);
+            }}
             style={{ width: 70, textAlign: 'center', fontSize: 22, fontWeight: 700 }}
           />
           <span style={{ color: 'var(--text-2)', fontSize: 18 }}>/</span>
@@ -284,15 +317,18 @@ export function OverviewTab({ character, derived }: Props) {
               <button onClick={() => setShortRestOpen(false)} style={{ fontSize: 22, color: 'var(--text-2)', lineHeight: 1, padding: '0 4px' }}>×</button>
             </div>
             <p style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 16 }}>
-              Tap a die to roll it. Each roll adds that die + CON modifier to your HP.
+              Spend hit dice to recover HP. Roll randomly or enter your own result.
             </p>
 
             {/* Per-class hit dice */}
             {Object.entries(derived.hitDice).map(([classId, hd]) => {
               const spending = diceToSpend[classId] ?? 0;
               const conMod = derived.statMods.constitution;
+              const conStr = conMod >= 0 ? `+${conMod}` : `${conMod}`;
+              const exhausted = spending >= hd.available;
               return (
                 <div key={classId} style={{ background: 'var(--bg-2)', borderRadius: 8, padding: '12px 14px', marginBottom: 10 }}>
+                  {/* Die header */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                     <div>
                       <span style={{ fontWeight: 700, fontSize: 15 }}>d{hd.die}</span>
@@ -301,13 +337,11 @@ export function OverviewTab({ character, derived }: Props) {
                         {hd.used > 0 && <span style={{ color: 'var(--accent-2)' }}> ({hd.used} spent since last long rest)</span>}
                       </span>
                     </div>
-                    <span style={{ fontSize: 11, color: 'var(--text-2)' }}>
-                      CON {conMod >= 0 ? '+' : ''}{conMod}
-                    </span>
+                    <span style={{ fontSize: 12, color: 'var(--text-2)' }}>CON {conStr}</span>
                   </div>
 
-                  {/* Dice pips */}
-                  <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 10 }}>
+                  {/* Pip track */}
+                  <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 12 }}>
                     {Array.from({ length: hd.total }).map((_, i) => {
                       const isUsedBefore = i < hd.used;
                       const isSpentThisRest = i >= hd.used && i < hd.used + spending;
@@ -316,10 +350,9 @@ export function OverviewTab({ character, derived }: Props) {
                           width: 18, height: 18, borderRadius: 4,
                           background: isUsedBefore ? 'var(--bg-3)' : isSpentThisRest ? 'var(--accent)' : 'color-mix(in srgb,var(--accent) 30%,var(--bg-2))',
                           border: `1px solid ${isUsedBefore ? 'var(--border)' : 'var(--accent)'}`,
-                          opacity: isUsedBefore ? 0.3 : 1,
+                          opacity: isUsedBefore ? 0.35 : 1,
                           fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          color: isSpentThisRest ? '#fff' : 'var(--accent)',
-                          fontWeight: 700,
+                          color: isSpentThisRest ? '#fff' : 'var(--accent)', fontWeight: 700,
                         }}>
                           {isSpentThisRest ? '✓' : isUsedBefore ? '×' : ''}
                         </div>
@@ -327,15 +360,54 @@ export function OverviewTab({ character, derived }: Props) {
                     })}
                   </div>
 
-                  {/* Roll button */}
-                  <button
-                    className="btn btn-primary"
-                    style={{ width: '100%', fontSize: 14, padding: '10px 0' }}
-                    disabled={spending >= hd.available}
-                    onClick={() => rollDie(hd.die, classId)}
-                  >
-                    {spending >= hd.available ? 'No dice left' : `Roll d${hd.die} (+${conMod >= 0 ? '+' : ''}${conMod} CON)`}
-                  </button>
+                  {/* Action row */}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {/* Random roll */}
+                    <button
+                      className="btn btn-primary"
+                      style={{ flex: 2, fontSize: 13, padding: '9px 12px' }}
+                      disabled={exhausted}
+                      onClick={() => rollDie(hd.die, classId, hd)}
+                    >
+                      {exhausted ? 'No dice left' : `Roll d${hd.die} (${conStr} CON)`}
+                    </button>
+
+                    {/* Manual entry */}
+                    {!exhausted && (
+                      <div style={{ flex: 1, display: 'flex', gap: 4 }}>
+                        <input
+                          type="number"
+                          min={1}
+                          max={hd.die}
+                          placeholder={`1–${hd.die}`}
+                          value={manualInput[classId] ?? ''}
+                          onChange={e => setManualInput(prev => ({ ...prev, [classId]: e.target.value }))}
+                          onKeyDown={e => { if (e.key === 'Enter') spendDieManual(classId, hd); }}
+                          style={{ width: 54, textAlign: 'center', fontSize: 14, padding: '0 4px' }}
+                        />
+                        <button
+                          className="btn btn-ghost"
+                          style={{ fontSize: 13, padding: '9px 10px', whiteSpace: 'nowrap' }}
+                          disabled={!manualInput[classId]}
+                          onClick={() => spendDieManual(classId, hd)}
+                        >
+                          Add
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Undo last die for this class */}
+                    {spending > 0 && (
+                      <button
+                        className="btn btn-ghost"
+                        style={{ fontSize: 13, padding: '9px 10px' }}
+                        title="Undo last die spent this rest"
+                        onClick={() => undoLastDie(classId)}
+                      >
+                        ↩
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -346,35 +418,38 @@ export function OverviewTab({ character, derived }: Props) {
               </p>
             )}
 
-            {/* Roll history */}
-            {diceRolls.length > 0 && (
-              <div style={{ background: 'color-mix(in srgb,var(--accent) 8%,var(--bg-2))', borderRadius: 8, padding: '10px 14px', marginBottom: 10 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Rolls this rest</p>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
-                  {diceRolls.map((r, i) => (
-                    <span key={i} style={{
-                      fontSize: 14, fontWeight: 700, padding: '3px 10px', borderRadius: 6,
-                      background: 'var(--accent)', color: '#fff',
-                    }}>{r > 0 ? '+' : ''}{r}</span>
-                  ))}
+            {/* Roll log */}
+            {diceRolls.length > 0 && (() => {
+              const totalHeal = diceRolls.reduce((s, r) => s + r.value, 0);
+              return (
+                <div style={{ background: 'color-mix(in srgb,var(--accent) 8%,var(--bg-2))', borderRadius: 8, padding: '10px 14px', marginBottom: 10 }}>
+                  <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Healing this rest</p>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+                    {diceRolls.map((r, i) => (
+                      <span key={i} style={{
+                        fontSize: 13, fontWeight: 700, padding: '3px 9px', borderRadius: 6,
+                        background: 'var(--accent)', color: '#fff',
+                      }}>{r.value >= 0 ? '+' : ''}{r.value}</span>
+                    ))}
+                  </div>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)' }}>
+                    Total: +{totalHeal} HP
+                    <span style={{ fontWeight: 400, color: 'var(--text-2)', marginLeft: 8 }}>
+                      ({character.health.current} → {Math.min(derived.maxHP, character.health.current + totalHeal)})
+                    </span>
+                  </p>
                 </div>
-                <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)' }}>
-                  Total healing: +{diceRolls.reduce((s, n) => s + n, 0)} HP
-                  <span style={{ fontWeight: 400, color: 'var(--text-2)', marginLeft: 6 }}>
-                    (current: {character.health.current} → {Math.min(derived.maxHP, character.health.current + diceRolls.reduce((s, n) => s + n, 0))})
-                  </span>
-                </p>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Confirm */}
             <div style={{ padding: '10px 0 0', borderTop: '1px solid var(--border)', display: 'flex', gap: 10 }}>
-              <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setShortRestOpen(false)}>
+              <button className="btn btn-ghost" style={{ flex: 1, padding: '10px 0' }} onClick={() => setShortRestOpen(false)}>
                 Cancel
               </button>
-              <button className="btn btn-primary" style={{ flex: 2, fontSize: 14 }} onClick={confirmShortRest}>
+              <button className="btn btn-primary" style={{ flex: 2, fontSize: 14, padding: '10px 16px' }} onClick={confirmShortRest}>
                 {diceRolls.length > 0
-                  ? `Finish Rest (+${diceRolls.reduce((s, n) => s + n, 0)} HP)`
+                  ? `Finish Rest (+${diceRolls.reduce((s, r) => s + r.value, 0)} HP)`
                   : 'Rest without spending dice'}
               </button>
             </div>
