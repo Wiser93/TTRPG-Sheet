@@ -444,7 +444,7 @@ export function OverviewTab({ character, derived }: Props) {
 
             {/* Confirm */}
             <div style={{ padding: '10px 0 0', borderTop: '1px solid var(--border)', display: 'flex', gap: 10 }}>
-              <button className="btn btn-ghost" style={{ flex: 1, padding: '10px 0' }} onClick={() => setShortRestOpen(false)}>
+              <button className="btn btn-ghost" style={{ flex: 1, padding: '10px 16px' }} onClick={() => setShortRestOpen(false)}>
                 Cancel
               </button>
               <button className="btn btn-primary" style={{ flex: 2, fontSize: 14, padding: '10px 16px' }} onClick={confirmShortRest}>

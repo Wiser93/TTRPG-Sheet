@@ -45,6 +45,7 @@ export class AppDatabase extends Dexie {
   species!: Table<DBSpecies>;
   backgrounds!: Table<DBBackground>;
   features!: Table<DBFeature>;
+  weaponProperties!: Table<import('@/types/game').ItemProperty & { updatedAt?: string; deletedAt?: string }>;
 
   // Character data
   characters!: Table<DBCharacter>;
@@ -68,8 +69,10 @@ export class AppDatabase extends Dexie {
       characters:  '&id, [meta.name+id], meta.updatedAt, meta.remoteId, meta.isDirty',
     });
 
-    // ── Future migrations go here ──────────────────────────
-    // this.version(2).stores({ ... }).upgrade(tx => { ... });
+    // ── Version 2: weapon property definitions ─────────────
+    this.version(2).stores({
+      weaponProperties: '&id, name, updatedAt, deletedAt',
+    });
   }
 }
 

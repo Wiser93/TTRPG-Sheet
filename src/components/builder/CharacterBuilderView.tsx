@@ -106,7 +106,7 @@ export function CharacterBuilderView() {
         />
         <button
           className="btn btn-primary"
-          style={{ width: '100%', marginTop: 10, padding: '12px 0', fontSize: 15, fontWeight: 700 }}
+          style={{ width: '100%', marginTop: 10, padding: '12px 20px', fontSize: 15, fontWeight: 700 }}
           onClick={() => openCharacter(activeCharacterId!)}
         >
           Done - Return to Sheet

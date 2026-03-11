@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useCharacterStore } from '@/store/characterStore';
-import { useItem, useItems } from '@/hooks/useGameDatabase';
+import { useItem, useItems, useItemProperties } from '@/hooks/useGameDatabase';
 import type { Character, DerivedStats, InventoryEntry } from '@/types/character';
 import type { DBItem } from '@/db/schema';
-import type { EquipSlot } from '@/types/game';
+import type { EquipSlot, ItemCategory } from '@/types/game';
 
 interface Props { character: Character; derived: DerivedStats }
 
@@ -177,8 +177,10 @@ function InventoryRow({ entry, equipped, onRemove, onQtyChange }: {
 }) {
   const { equipItem, unequipItem } = useCharacterStore();
   const item = useItem(entry.itemId);
+  const allProperties = useItemProperties() ?? [];
   const [expanded, setExpanded] = useState(false);
   const [showEquipMenu, setShowEquipMenu] = useState(false);
+  const [qtyStr, setQtyStr] = useState<string | null>(null);
 
   const equippedSlot = (Object.entries(equipped) as [EquipSlot, string][])
     .find(([, id]) => id === entry.id)?.[0];
@@ -244,8 +246,13 @@ function InventoryRow({ entry, equipped, onRemove, onQtyChange }: {
         </button>
 
         {/* Qty */}
-        <input type="number" value={entry.quantity} min={0}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => onQtyChange(Number(e.target.value))}
+        <input type="number" value={qtyStr ?? entry.quantity} min={0}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQtyStr(e.target.value)}
+          onBlur={() => {
+            const parsed = parseInt(qtyStr ?? '', 10);
+            onQtyChange(isNaN(parsed) ? entry.quantity : Math.max(0, parsed));
+            setQtyStr(null);
+          }}
           style={{ width:44, textAlign:'center', margin:0, fontSize:13 }} />
 
         <button onClick={onRemove} style={{ color:'var(--accent-2)', fontSize:18, lineHeight:1, padding:'0 2px' }}>×</button>
@@ -255,24 +262,132 @@ function InventoryRow({ entry, equipped, onRemove, onQtyChange }: {
         <div style={{ padding:'4px 10px 10px', borderTop:'1px solid var(--border)', borderRadius:'0 0 6px 6px', overflow:'hidden' }}>
           {item.description && <p style={{ fontSize:12, color:'var(--text-2)', marginBottom:6, lineHeight:1.5 }}>{item.description}</p>}
           {item.weaponStats && (
-            <p style={{ fontSize:12, color:'var(--text-1)' }}>
-              {item.weaponStats.damage.diceCount}d{item.weaponStats.damage.dieSize}
-              {item.weaponStats.damage.modifier ? ` ${item.weaponStats.damage.modifier > 0 ? '+' : ''}${item.weaponStats.damage.modifier}` : ''}
-              {' '}{item.weaponStats.damageType}
-              {item.weaponStats.properties.length > 0 && ` · ${item.weaponStats.properties.join(', ')}`}
-            </p>
+            <div style={{ marginBottom: 6 }}>
+              <p style={{ fontSize:12, color:'var(--text-1)', marginBottom: item.weaponStats.properties.length > 0 ? 4 : 0 }}>
+                {item.weaponStats.damage.diceCount}d{item.weaponStats.damage.dieSize}
+                {item.weaponStats.damage.modifier ? ` ${item.weaponStats.damage.modifier > 0 ? '+' : ''}${item.weaponStats.damage.modifier}` : ''}
+                {' · '}{item.weaponStats.damageType}
+              </p>
+              {item.weaponStats.properties.length > 0 && (
+                <InlinePropertyBadges
+                  properties={item.weaponStats.properties}
+                  allProperties={allProperties}
+                  itemCategory={item.category as ItemCategory} />
+              )}
+            </div>
           )}
           {item.armorStats && (
-            <p style={{ fontSize:12, color:'var(--text-1)' }}>
-              AC {item.armorStats.baseAC}
-              {item.armorStats.maxDexBonus !== undefined ? ` (max +${item.armorStats.maxDexBonus} DEX)` : ' + DEX'}
-            </p>
+            <div style={{ marginBottom: 6 }}>
+              <p style={{ fontSize:12, color:'var(--text-1)', marginBottom: 4 }}>
+                AC {item.armorStats.baseAC}
+                {item.armorStats.maxDexBonus !== undefined ? ` (max +${item.armorStats.maxDexBonus} DEX)` : ' + DEX'}
+              </p>
+              {(item.armorStats.properties?.length ?? 0) > 0 && (
+                <InlinePropertyBadges
+                  properties={item.armorStats.properties ?? []}
+                  allProperties={allProperties}
+                  itemCategory={item.category as ItemCategory} />
+              )}
+            </div>
+          )}
+          {item.shieldStats && (
+            <div style={{ marginBottom: 6 }}>
+              <p style={{ fontSize:12, color:'var(--text-1)', marginBottom: 4 }}>
+                +{item.shieldStats.acBonus} AC (shield)
+                {item.shieldStats.strengthRequired ? ` · STR ${item.shieldStats.strengthRequired}+` : ''}
+                {item.shieldStats.stealthDisadvantage ? ' · stealth disadv.' : ''}
+              </p>
+              {(item.shieldStats.properties?.length ?? 0) > 0 && (
+                <InlinePropertyBadges
+                  properties={item.shieldStats.properties ?? []}
+                  allProperties={allProperties}
+                  itemCategory={item.category as ItemCategory} />
+              )}
+            </div>
+          )}
+          {(item.properties?.length ?? 0) > 0 && !item.weaponStats && !item.armorStats && !item.shieldStats && (
+            <InlinePropertyBadges
+              properties={item.properties ?? []}
+              allProperties={allProperties}
+              itemCategory={item.category as ItemCategory} />
           )}
           {item.rarity && item.rarity !== 'common' && (
             <p style={{ fontSize:11, color:'var(--accent)', marginTop:4, fontStyle:'italic' }}>{item.rarity}</p>
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Inline property badges for inventory expanded view ────────
+
+function InlinePropertyBadges({
+  properties, allProperties, itemCategory, showAll = false,
+}: {
+  properties: string[];
+  allProperties: import('@/types/game').ItemProperty[];
+  itemCategory: ItemCategory;
+  showAll?: boolean;
+}) {
+  const [open, setOpen] = useState<string | null>(null);
+
+  // Filter property definitions to those applicable to this category
+  const applicable = allProperties.filter(ap => {
+    const cats = ap.applicableCategories;
+    return !cats || cats === 'all' || (Array.isArray(cats) && cats.includes(itemCategory));
+  });
+
+  // When showAll=true (armor/tool with no stored property strings), show all applicable defs
+  const toShow = showAll
+    ? applicable
+    : applicable.filter(ap => properties.some(p => p.toLowerCase() === ap.name.toLowerCase()));
+
+  // Also show any property strings that have no matching definition
+  const unmatched = properties.filter(p => !applicable.some(ap => ap.name.toLowerCase() === p.toLowerCase()));
+
+  if (toShow.length === 0 && unmatched.length === 0) return null;
+
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+      {toShow.map(def => (
+        <span key={def.id} style={{ position: 'relative', display: 'inline-block' }}>
+          <button
+            onClick={() => setOpen(open === def.id ? null : def.id)}
+            style={{
+              fontSize: 11, padding: '1px 7px', borderRadius: 10,
+              background: def.isMastery ? 'color-mix(in srgb,var(--accent) 18%,var(--bg-3))' : 'var(--bg-3)',
+              border: `1px solid ${def.isMastery ? 'var(--accent)' : 'var(--border)'}`,
+              color: def.isMastery ? 'var(--accent)' : 'var(--text-2)',
+              fontWeight: def.isMastery ? 700 : 400,
+              cursor: 'pointer', textDecoration: 'underline dotted',
+            }}>
+            {def.name}{def.isMastery ? ' ★' : ''}
+          </button>
+          {open === def.id && (
+            <div style={{
+              position: 'absolute', bottom: '110%', left: 0,
+              background: 'var(--bg-0)', border: '1px solid var(--border)',
+              borderRadius: 8, padding: '10px 12px', width: 220,
+              zIndex: 200, boxShadow: '0 4px 16px rgba(0,0,0,0.35)',
+              fontSize: 12, lineHeight: 1.5,
+            }}>
+              <div style={{ fontWeight: 700, marginBottom: 4, color: def.isMastery ? 'var(--accent)' : 'var(--text-1)' }}>
+                {def.name}{def.isMastery ? ' (Mastery)' : ''}
+              </div>
+              <div style={{ color: 'var(--text-2)' }}>{def.description}</div>
+              <button onClick={() => setOpen(null)}
+                style={{ position: 'absolute', top: 6, right: 8, fontSize: 14, color: 'var(--text-2)' }}>×</button>
+            </div>
+          )}
+        </span>
+      ))}
+      {unmatched.map(p => (
+        <span key={p} style={{
+          fontSize: 11, padding: '1px 7px', borderRadius: 10,
+          background: 'var(--bg-3)', border: '1px solid var(--border)', color: 'var(--text-2)',
+        }}>{p}</span>
+      ))}
     </div>
   );
 }

@@ -231,3 +231,16 @@ export async function upsertFeature(feat: InsertPayload<DBFeature> & { id?: stri
 export async function deleteFeature(id: string): Promise<void> {
   await db.features.update(id, { deletedAt: new Date().toISOString(), isDirty: true });
 }
+
+// ── Weapon Property Definitions ───────────────────────────────
+
+export async function upsertWeaponProperty(prop: import('@/types/game').ItemProperty & { id?: string }): Promise<string> {
+  const id = prop.id ?? crypto.randomUUID();
+  const now = new Date().toISOString();
+  await db.weaponProperties.put({ ...prop, id, updatedAt: now });
+  return id;
+}
+
+export async function deleteWeaponProperty(id: string): Promise<void> {
+  await db.weaponProperties.update(id, { deletedAt: new Date().toISOString() });
+}

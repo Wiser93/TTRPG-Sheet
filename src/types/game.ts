@@ -270,6 +270,32 @@ export interface Feature {
 }
 
 // ============================================================
+// WEAPON PROPERTY DEFINITIONS
+// ============================================================
+
+/** @deprecated renamed to ItemProperty */
+export type WeaponProperty = ItemProperty;
+
+export interface ItemProperty {
+  id: string;
+  /** Canonical name, e.g. "finesse", "light", "mastery", "stealth disadvantage" */
+  name: string;
+  /** Human-readable description of what the property does */
+  description: string;
+  /**
+   * Which item categories this property applies to.
+   * If omitted or 'all', it is considered universal.
+   * Use an array to restrict to specific categories (e.g. ['weapon'] or ['armor','shield']).
+   */
+  applicableCategories?: ItemCategory[] | 'all';
+  /**
+   * If true, this property is a mastery property — only shown on the item
+   * card when the character is proficient with that item.
+   */
+  isMastery?: boolean;
+}
+
+// ============================================================
 // RESOURCE FORMULA
 // ============================================================
 
@@ -531,6 +557,17 @@ export interface ArmorStats {
   maxDexBonus?: number;        // undefined = unlimited
   strengthRequired?: number;
   stealthDisadvantage?: boolean;
+  /** Named properties (e.g. "stealth disadvantage") linkable to ItemProperty DB entries */
+  properties?: string[];
+}
+
+export interface ShieldStats {
+  /** Flat AC bonus granted by this shield, e.g. +2 */
+  acBonus: number;
+  /** Minimum STR to use without speed penalty (rare, e.g. tower shields) */
+  strengthRequired?: number;
+  stealthDisadvantage?: boolean;
+  properties?: string[];
 }
 
 export interface Item {
@@ -545,6 +582,9 @@ export interface Item {
   equipSlots?: EquipSlot[];
   weaponStats?: WeaponStats;
   armorStats?: ArmorStats;
+  shieldStats?: ShieldStats;
+  /** Named properties for non-weapon/armor items (e.g. tool kit contents) */
+  properties?: string[];
   modifiers?: Modifier[];      // passive bonuses while equipped/attuned
   features?: Feature[];        // active abilities
   charges?: {

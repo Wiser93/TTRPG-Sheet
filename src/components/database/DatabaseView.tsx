@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useUIStore } from '@/store/uiStore';
-import { useItems, useSpells, useClasses, useSubclasses, useFeats, useAllSpecies, useBackgrounds, useFeatures } from '@/hooks/useGameDatabase';
-import { upsertItem, deleteItem, upsertSpell, deleteSpell, upsertClass, deleteClass, upsertFeat, deleteFeat, upsertSpecies, deleteSpecies, upsertBackground, deleteBackground, upsertFeature, deleteFeature, upsertSubclass, deleteSubclass } from '@/db/gameDatabase';
+import { useItems, useSpells, useClasses, useSubclasses, useFeats, useAllSpecies, useBackgrounds, useFeatures, useItemProperties } from '@/hooks/useGameDatabase';
+import { upsertItem, deleteItem, upsertSpell, deleteSpell, upsertClass, deleteClass, upsertFeat, deleteFeat, upsertSpecies, deleteSpecies, upsertBackground, deleteBackground, upsertFeature, deleteFeature, upsertSubclass, deleteSubclass, upsertWeaponProperty, deleteWeaponProperty } from '@/db/gameDatabase';
 import { elementalShaperClass, elementalShaperFeatures } from '@/data/elementalShaper';
 import { theHarmonist, theHarmonistFeatures } from '@/data/theHarmonist';
 import { SlidePanel } from '@/components/ui/SlidePanel';
@@ -13,9 +13,10 @@ import { SpeciesForm } from './forms/SpeciesForm';
 import { BackgroundForm } from './forms/BackgroundForm';
 import { FeatureForm } from './forms/FeatureForm';
 import { SubclassForm } from './forms/SubclassForm';
-import type { Item, Spell, GameClass, Subclass, Feat, Species, Background, Feature } from '@/types/game';
+import { PropertyForm } from './forms/PropertyForm';
+import type { Item, Spell, GameClass, Subclass, Feat, Species, Background, Feature, WeaponProperty } from '@/types/game';
 
-type SectionKey = 'items' | 'spells' | 'classes' | 'subclasses' | 'feats' | 'species' | 'backgrounds' | 'features';
+type SectionKey = 'items' | 'spells' | 'classes' | 'subclasses' | 'feats' | 'species' | 'backgrounds' | 'features' | 'properties';
 
 type EditTarget =
   | { type: 'items'; record?: Item }
@@ -25,7 +26,8 @@ type EditTarget =
   | { type: 'species'; record?: Species }
   | { type: 'backgrounds'; record?: Background }
   | { type: 'features'; record?: Feature }
-  | { type: 'subclasses'; record?: Subclass };
+  | { type: 'subclasses'; record?: Subclass }
+  | { type: 'properties'; record?: WeaponProperty };
 
 export function DatabaseView() {
   const { databaseSection, setDatabaseSection, setView } = useUIStore();
@@ -37,6 +39,7 @@ export function DatabaseView() {
   const backgrounds = useBackgrounds();
   const features = useFeatures();
   const subclasses = useSubclasses();
+  const weaponProperties = useItemProperties();
 
   const [editing, setEditing] = useState<EditTarget | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -80,6 +83,7 @@ export function DatabaseView() {
     { key: 'backgrounds' as const, label: 'Backgrounds', icon: '📖',  data: backgrounds },
     { key: 'features' as const,    label: 'Features',    icon: '⚡',  data: features },
     { key: 'subclasses' as const,  label: 'Subclasses',  icon: '🌀',  data: subclasses },
+    { key: 'properties' as const,  label: 'Properties',  icon: '🏷️',  data: weaponProperties },
   ];
 
   const active = sections.find(s => s.key === databaseSection)!;
@@ -100,6 +104,7 @@ export function DatabaseView() {
       else if (editing?.type === 'backgrounds') await upsertBackground({ ...(data as Omit<Background,'id'>), id });
       else if (editing?.type === 'features')    await upsertFeature({ ...(data as Omit<Feature,'id'>), id });
       else if (editing?.type === 'subclasses')  await upsertSubclass({ ...(data as Omit<Subclass,'id'>), id });
+      else if (editing?.type === 'properties')  await upsertWeaponProperty({ ...(data as Omit<WeaponProperty,'id'>), id });
       setEditing(null);
     } finally {
       setIsSaving(false);
@@ -119,6 +124,7 @@ export function DatabaseView() {
     else if (type === 'species')     await deleteSpecies(id);
     else if (type === 'backgrounds') await deleteBackground(id);
     else if (type === 'subclasses')  await deleteSubclass(id);
+    else if (type === 'properties')   await deleteWeaponProperty(id);
   }
 
   async function handleDeleteClass(id: string) {
@@ -153,7 +159,7 @@ export function DatabaseView() {
 
   function panelTitle() {
     const isEdit = !!editing?.record;
-    const labels: Record<SectionKey, string> = { items:'Item', spells:'Spell', classes:'Class', subclasses:'Subclass', feats:'Feat', species:'Species', backgrounds:'Background', features:'Feature' };
+    const labels: Record<SectionKey, string> = { items:'Item', spells:'Spell', classes:'Class', subclasses:'Subclass', feats:'Feat', species:'Species', backgrounds:'Background', features:'Feature', properties:'Property' };
     return `${isEdit ? 'Edit' : 'New'} ${labels[editing?.type ?? 'items']}`;
   }
 
@@ -279,6 +285,9 @@ export function DatabaseView() {
         )}
         {editing?.type === 'subclasses' && (
           <SubclassForm initial={editing.record as Partial<Subclass>} onSave={handleSave} onCancel={() => setEditing(null)} isSaving={isSaving} />
+        )}
+        {editing?.type === 'properties' && (
+          <PropertyForm initial={editing.record} onSave={handleSave} onCancel={() => setEditing(null)} isSaving={isSaving} />
         )}
       </SlidePanel>
     </div>
