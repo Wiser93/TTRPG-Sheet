@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useUIStore } from '@/store/uiStore';
 import { useItems, useSpells, useClasses, useSubclasses, useFeats, useAllSpecies, useBackgrounds, useFeatures, useItemProperties } from '@/hooks/useGameDatabase';
-import { upsertItem, deleteItem, upsertSpell, deleteSpell, upsertClass, deleteClass, upsertFeat, deleteFeat, upsertSpecies, deleteSpecies, upsertBackground, deleteBackground, upsertFeature, deleteFeature, upsertSubclass, deleteSubclass, upsertItemProperty, deleteItemProperty } from '@/db/gameDatabase';
+import { upsertItem, deleteItem, upsertSpell, deleteSpell, upsertClass, deleteClass, upsertFeat, deleteFeat, upsertSpecies, deleteSpecies, upsertBackground, deleteBackground, upsertFeature, deleteFeature, upsertSubclass, deleteSubclass, upsertItemProperty, deleteItemProperty, clearAllGameContent } from '@/db/gameDatabase';
 import { elementalShaperClass, elementalShaperFeatures } from '@/data/elementalShaper';
 import { theHarmonist, theHarmonistFeatures } from '@/data/theHarmonist';
 import { seedSrdProperties } from '@/data/srdProperties';
@@ -31,6 +31,21 @@ type EditTarget =
   | { type: 'subclasses'; record?: Subclass }
   | { type: 'properties'; record?: ItemProperty };
 
+// ── Delete modal payload ───────────────────────────────────────
+
+type DeleteModal = {
+  title: string;
+  body: string;
+  /** Label shown on the single-delete button */
+  singleLabel: string;
+  /** Label shown on the cascade-delete button, or null if no cascade is available */
+  cascadeLabel: string | null;
+  /** Warning shown under the cascade button */
+  cascadeWarning?: string;
+  onSingle: () => Promise<void>;
+  onCascade?: () => Promise<void>;
+};
+
 export function DatabaseView() {
   const { databaseSection, setDatabaseSection, setView } = useUIStore();
   const items = useItems();
@@ -46,6 +61,9 @@ export function DatabaseView() {
   const [editing, setEditing] = useState<EditTarget | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [search, setSearch] = useState('');
+  const [deleteModal, setDeleteModal] = useState<DeleteModal | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
 
   // ── Nav sections (excludes 'library' — handled separately) ──
   const DATA_SECTIONS = [
@@ -88,62 +106,140 @@ export function DatabaseView() {
     }
   }
 
-  async function handleDelete(type: SectionKey, id: string) {
-    if (type === 'classes') { await handleDeleteClass(id); return; }
-    if (type === 'subclasses') { await handleDeleteSubclass(id); return; }
-    if (!confirm('Delete this entry? This cannot be undone.')) return;
-    if (type === 'items')            await deleteItem(id);
-    else if (type === 'spells')      await deleteSpell(id);
-    else if (type === 'feats')       await deleteFeat(id);
-    else if (type === 'features')    await deleteFeature(id);
-    else if (type === 'species')     await deleteSpecies(id);
-    else if (type === 'backgrounds') await deleteBackground(id);
-    else if (type === 'properties')  await deleteItemProperty(id);
+  // ── Delete helpers ────────────────────────────────────────────
+
+  function pathFeaturesOf(pathId: string) {
+    return (features ?? []).filter(f => f.sourceId === pathId && f.sourceType === 'path');
+  }
+  function subclassFeaturesOf(scId: string) {
+    return (features ?? []).filter(f => f.sourceId === scId && f.sourceType === 'subclass');
+  }
+  function classFeaturesOf(classId: string) {
+    return (features ?? []).filter(f => f.sourceId === classId && f.sourceType === 'class');
   }
 
-  async function handleDeleteSubclass(id: string) {
-    const sc = subclasses?.find(s => s.id === id);
+  function handleDelete(type: SectionKey, id: string) {
+    if (type === 'classes')    { buildClassDeleteModal(id);    return; }
+    if (type === 'subclasses') { buildSubclassDeleteModal(id); return; }
+    if (type === 'features')   { buildFeatureDeleteModal(id);  return; }
+
+    const label = type === 'items' ? 'item'
+      : type === 'spells' ? 'spell' : type === 'feats' ? 'feat'
+      : type === 'species' ? 'species entry' : type === 'backgrounds' ? 'background' : 'property';
+
+    setDeleteModal({
+      title: `Delete ${label}?`,
+      body: 'This cannot be undone.',
+      singleLabel: 'Delete',
+      cascadeLabel: null,
+      onSingle: async () => {
+        if (type === 'items')            await deleteItem(id);
+        else if (type === 'spells')      await deleteSpell(id);
+        else if (type === 'feats')       await deleteFeat(id);
+        else if (type === 'species')     await deleteSpecies(id);
+        else if (type === 'backgrounds') await deleteBackground(id);
+        else if (type === 'properties')  await deleteItemProperty(id);
+      },
+    });
+  }
+
+  function buildFeatureDeleteModal(id: string) {
+    const feat = (features ?? []).find(f => f.id === id);
+    if (!feat) return;
+    const pathChildren = feat.isPath ? pathFeaturesOf(id) : [];
+    setDeleteModal({
+      title: `Delete "${feat.name}"?`,
+      body: feat.isPath && pathChildren.length > 0
+        ? `This path has ${pathChildren.length} connected feature(s). Deleting only the path will orphan them.`
+        : 'This cannot be undone.',
+      singleLabel: feat.isPath && pathChildren.length > 0 ? 'Delete path only (orphan features)' : 'Delete',
+      cascadeLabel: feat.isPath && pathChildren.length > 0
+        ? `Cascade delete (path + ${pathChildren.length} features)` : null,
+      cascadeWarning: pathChildren.length > 0
+        ? `Will also permanently delete: ${pathChildren.map(f => f.name).join(', ')}` : undefined,
+      onSingle: async () => { await deleteFeature(id); },
+      onCascade: pathChildren.length > 0 ? async () => {
+        for (const f of pathChildren) await deleteFeature(f.id);
+        await deleteFeature(id);
+      } : undefined,
+    });
+  }
+
+  function buildSubclassDeleteModal(id: string) {
+    const sc = (subclasses ?? []).find(s => s.id === id);
     if (!sc) return;
-    const linkedFeatures = (features ?? []).filter(f => f.sourceId === id && f.sourceType === 'subclass');
-    if (!confirm(`Delete subclass "${sc.name}"?${linkedFeatures.length > 0 ? `\n\n${linkedFeatures.length} feature(s) are linked to this subclass.` : ''}\n\nContinue?`)) return;
-    await deleteSubclass(id);
-    if (linkedFeatures.length > 0) {
-      if (confirm(`Delete ${linkedFeatures.length} linked feature(s)?\n${linkedFeatures.map(f => f.name).join(', ')}`)) {
-        for (const f of linkedFeatures) await deleteFeature(f.id);
-      }
-    }
+    const scFeats = subclassFeaturesOf(id);
+    setDeleteModal({
+      title: `Delete subclass "${sc.name}"?`,
+      body: scFeats.length > 0
+        ? `${scFeats.length} feature(s) are linked to this subclass. Deleting only the subclass will orphan them.`
+        : 'This cannot be undone.',
+      singleLabel: scFeats.length > 0 ? 'Delete subclass only (orphan features)' : 'Delete',
+      cascadeLabel: scFeats.length > 0 ? `Cascade delete (subclass + ${scFeats.length} features)` : null,
+      cascadeWarning: scFeats.length > 0
+        ? `Will also permanently delete: ${scFeats.map(f => f.name).join(', ')}` : undefined,
+      onSingle: async () => { await deleteSubclass(id); },
+      onCascade: scFeats.length > 0 ? async () => {
+        for (const f of scFeats) await deleteFeature(f.id);
+        await deleteSubclass(id);
+      } : undefined,
+    });
   }
 
-  async function handleDeleteClass(id: string) {
-    const cls = classes?.find(c => c.id === id);
+  function buildClassDeleteModal(id: string) {
+    const cls = (classes ?? []).find(c => c.id === id);
     if (!cls) return;
     const linkedSubclasses = (subclasses ?? []).filter(s => s.parentClassId === id);
-    const linkedFeatures = (features ?? []).filter(f => f.sourceId === id && f.sourceType === 'class');
-    const linkedSubclassFeatures = linkedSubclasses.flatMap(s =>
-      (features ?? []).filter(f => f.sourceId === s.id && f.sourceType === 'subclass')
-    );
-    const parts: string[] = [`Delete class "${cls.name}"?`];
+    const classFeats = classFeaturesOf(id);
+    const pathFeats = classFeats.filter(f => f.isPath);
+    const pathChildren = pathFeats.flatMap(p => pathFeaturesOf(p.id));
+    const allSubclassFeats = linkedSubclasses.flatMap(s => subclassFeaturesOf(s.id));
+    const cascadeCount = linkedSubclasses.length + classFeats.length + pathChildren.length + allSubclassFeats.length;
+
+    const bodyParts: string[] = [];
     if (linkedSubclasses.length > 0)
-      parts.push(`This will also offer to delete ${linkedSubclasses.length} subclass(es): ${linkedSubclasses.map(s => s.name).join(', ')}.`);
-    const totalFeatures = linkedFeatures.length + linkedSubclassFeatures.length;
-    if (totalFeatures > 0)
-      parts.push(`${totalFeatures} feature(s) are linked to this class or its subclasses.`);
-    if (!confirm(parts.join('\n\n') + '\n\nContinue?')) return;
-    await deleteClass(id);
-    if (linkedSubclasses.length > 0) {
-      if (confirm(`Delete ${linkedSubclasses.length} linked subclass(es)?\n${linkedSubclasses.map(s => s.name).join(', ')}`)) {
-        for (const s of linkedSubclasses) {
-          await deleteSubclass(s.id);
-          const scFeats = (features ?? []).filter(f => f.sourceId === s.id && f.sourceType === 'subclass');
-          for (const f of scFeats) await deleteFeature(f.id);
-        }
-      }
-    }
-    if (linkedFeatures.length > 0) {
-      if (confirm(`Delete ${linkedFeatures.length} class feature(s)?\n${linkedFeatures.map(f => f.name).join(', ')}`)) {
-        for (const f of linkedFeatures) await deleteFeature(f.id);
-      }
-    }
+      bodyParts.push(`${linkedSubclasses.length} subclass(es): ${linkedSubclasses.map(s => s.name).join(', ')}`);
+    if (classFeats.length > 0)
+      bodyParts.push(`${classFeats.length} class feature(s)${pathFeats.length > 0 ? ` (including ${pathFeats.length} path(s))` : ''}`);
+    if (pathChildren.length > 0)
+      bodyParts.push(`${pathChildren.length} path feature(s) across ${pathFeats.length} path(s)`);
+    if (allSubclassFeats.length > 0)
+      bodyParts.push(`${allSubclassFeats.length} subclass feature(s)`);
+
+    setDeleteModal({
+      title: `Delete class "${cls.name}"?`,
+      body: bodyParts.length > 0
+        ? `Linked content that will become orphaned on single delete:\n• ${bodyParts.join('\n• ')}`
+        : 'This cannot be undone.',
+      singleLabel: cascadeCount > 0 ? 'Delete class only (orphan linked content)' : 'Delete',
+      cascadeLabel: cascadeCount > 0 ? `Cascade delete (class + ${cascadeCount} linked records)` : null,
+      cascadeWarning: cascadeCount > 0
+        ? 'Will permanently delete the class, all its subclasses, and all linked features including path features.' : undefined,
+      onSingle: async () => { await deleteClass(id); },
+      onCascade: cascadeCount > 0 ? async () => {
+        for (const f of pathChildren)     await deleteFeature(f.id);
+        for (const f of classFeats)       await deleteFeature(f.id);
+        for (const f of allSubclassFeats) await deleteFeature(f.id);
+        for (const s of linkedSubclasses) await deleteSubclass(s.id);
+        await deleteClass(id);
+      } : undefined,
+    });
+  }
+
+  function handleClearDatabase() {
+    setDeleteModal({
+      title: '⚠️ Clear entire database?',
+      body: 'This will permanently erase ALL game content — every item, spell, class, subclass, feat, species, background, feature, and property. Your characters will not be affected.',
+      singleLabel: 'Cancel',
+      cascadeLabel: 'Delete everything',
+      cascadeWarning: 'This action cannot be undone.',
+      onSingle: async () => { /* no-op: cancel just closes the modal */ },
+      onCascade: async () => {
+        setIsClearing(true);
+        try { await clearAllGameContent(); }
+        finally { setIsClearing(false); }
+      },
+    });
   }
 
   // ── Panel title ─────────────────────────────────────────────
@@ -165,6 +261,15 @@ export function DatabaseView() {
       <header style={{ background: 'var(--bg-1)', borderBottom: '1px solid var(--border)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
         <button onClick={() => setView('home')} style={{ fontSize: 20 }}>←</button>
         <h1 style={{ fontSize: 18, fontWeight: 700, flex: 1 }}>Game Database</h1>
+        <button
+          className="btn btn-ghost"
+          style={{ fontSize: 12, color: 'var(--accent-2)' }}
+          onClick={handleClearDatabase}
+          disabled={isClearing}
+          title="Permanently delete all game content"
+        >
+          {isClearing ? 'Clearing…' : '🗑 Clear DB'}
+        </button>
         {!isLibrary && (
           <button className="btn btn-primary" style={{ fontSize: 13 }}
             onClick={() => setEditing({ type: databaseSection as Exclude<SectionKey,'library'> })}>
@@ -265,6 +370,25 @@ export function DatabaseView() {
         {editing?.type === 'subclasses' && <SubclassForm initial={editing.record as Partial<Subclass>} onSave={handleSave} onCancel={() => setEditing(null)} isSaving={isSaving} />}
         {editing?.type === 'properties' && <PropertyForm initial={editing.record} onSave={handleSave} onCancel={() => setEditing(null)} isSaving={isSaving} />}
       </SlidePanel>
+
+      {/* Delete / cascade confirmation modal */}
+      {deleteModal && (
+        <ConfirmModal
+          modal={deleteModal}
+          isExecuting={isDeleting}
+          onClose={() => setDeleteModal(null)}
+          onExecute={async (cascade) => {
+            setIsDeleting(true);
+            try {
+              if (cascade && deleteModal.onCascade) await deleteModal.onCascade();
+              else await deleteModal.onSingle();
+            } finally {
+              setIsDeleting(false);
+              setDeleteModal(null);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -523,6 +647,96 @@ function LibraryPanel({
         More content packs coming soon.
       </p>
     </main>
+  );
+}
+
+// ── Confirm / cascade modal ────────────────────────────────────
+
+function ConfirmModal({
+  modal,
+  isExecuting,
+  onClose,
+  onExecute,
+}: {
+  modal: DeleteModal;
+  isExecuting: boolean;
+  onClose: () => void;
+  onExecute: (cascade: boolean) => Promise<void>;
+}) {
+  const isClearAll = modal.title.includes('Clear entire database');
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 1000,
+      background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(2px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+    }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div style={{
+        background: 'var(--bg-1)', borderRadius: 12, padding: 24, maxWidth: 480, width: '100%',
+        border: '1px solid var(--border)', boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+      }}>
+        <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>{modal.title}</h2>
+
+        {/* Body — render newlines as paragraphs */}
+        <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 16, lineHeight: 1.6 }}>
+          {modal.body.split('\n').map((line, i) => (
+            <p key={i} style={{ marginBottom: 4 }}>{line}</p>
+          ))}
+        </div>
+
+        {/* Cascade warning box */}
+        {modal.cascadeWarning && (
+          <div style={{
+            background: 'color-mix(in srgb, var(--accent-2) 12%, var(--bg-2))',
+            border: '1px solid color-mix(in srgb, var(--accent-2) 35%, transparent)',
+            borderRadius: 8, padding: '10px 14px', marginBottom: 16,
+            fontSize: 12, color: 'var(--accent-2)', lineHeight: 1.5,
+          }}>
+            ⚠️ {modal.cascadeWarning}
+          </div>
+        )}
+
+        {/* Action buttons */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {/* Cascade / destructive button — shown first so it's prominent */}
+          {modal.cascadeLabel && (
+            <button
+              className="btn"
+              style={{
+                background: 'var(--accent-2)', color: '#fff', padding: '10px 16px',
+                borderRadius: 8, fontWeight: 600, fontSize: 13, opacity: isExecuting ? 0.6 : 1,
+              }}
+              disabled={isExecuting}
+              onClick={() => onExecute(true)}
+            >
+              {isExecuting ? 'Working…' : modal.cascadeLabel}
+            </button>
+          )}
+
+          {/* Single delete / cancel */}
+          {!isClearAll && (
+            <button
+              className="btn btn-ghost"
+              style={{ padding: '10px 16px', fontSize: 13, opacity: isExecuting ? 0.6 : 1 }}
+              disabled={isExecuting}
+              onClick={() => onExecute(false)}
+            >
+              {modal.singleLabel}
+            </button>
+          )}
+
+          <button
+            className="btn btn-ghost"
+            style={{ padding: '10px 16px', fontSize: 13, color: 'var(--text-2)' }}
+            disabled={isExecuting}
+            onClick={onClose}
+          >
+            {isClearAll ? 'Cancel' : 'Keep entry'}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

@@ -244,3 +244,28 @@ export async function upsertItemProperty(prop: Omit<import('@/types/game').ItemP
 export async function deleteItemProperty(id: string): Promise<void> {
   await db.itemProperties.update(id, { deletedAt: new Date().toISOString() });
 }
+
+// ── Clear all game content ─────────────────────────────────────
+
+/**
+ * Hard-deletes every row from every game content table (items, spells, classes,
+ * subclasses, feats, species, backgrounds, features, itemProperties).
+ * Characters are NOT touched.
+ */
+export async function clearAllGameContent(): Promise<void> {
+  await db.transaction('rw',
+    [db.items, db.spells, db.classes, db.subclasses, db.feats,
+     db.species, db.backgrounds, db.features, db.itemProperties],
+    async () => {
+      await db.items.clear();
+      await db.spells.clear();
+      await db.classes.clear();
+      await db.subclasses.clear();
+      await db.feats.clear();
+      await db.species.clear();
+      await db.backgrounds.clear();
+      await db.features.clear();
+      await db.itemProperties.clear();
+    }
+  );
+}

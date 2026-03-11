@@ -16,6 +16,8 @@ import type { Feature } from '@/types/game';
 // ── Recharge trigger ─────────────────────────────────────────
 export const waterRecharge: Feature = {
   id: 'path-water-recharge',
+  sourceId: 'path-water',
+  sourceType: 'path' as const,
   name: 'Water Recharge',
   description: 'If you are the target of an attack and use a reaction during a single round, regain 1 expended EC.',
   actionType: 'passive',
@@ -26,6 +28,8 @@ export const waterRecharge: Feature = {
 // ── Tier 1 ───────────────────────────────────────────────────
 export const riptideStep: Feature = {
   id: 'path-water-riptide-step',
+  sourceId: 'path-water',
+  sourceType: 'path' as const,
   name: 'Riptide Step',
   actionType: 'reaction',
   cost: '1 EC',
@@ -35,6 +39,8 @@ export const riptideStep: Feature = {
 
 export const flowingForm: Feature = {
   id: 'path-water-flowing-form',
+  sourceId: 'path-water',
+  sourceType: 'path' as const,
   name: 'Flowing Form',
   actionType: 'passive',
   description: 'You can move through spaces occupied by hostile creatures as if they were difficult terrain. You have advantage on checks to escape grapples or being restrained.',
@@ -44,6 +50,8 @@ export const flowingForm: Feature = {
 // ── Tier 2 augments ──────────────────────────────────────────
 export const crashingWave: Feature = {
   id: 'path-water-crashing-wave',
+  sourceId: 'path-water',
+  sourceType: 'path' as const,
   name: 'Crashing Wave',
   actionType: 'action',
   cost: '2 EC',
@@ -53,6 +61,8 @@ export const crashingWave: Feature = {
 
 export const mistVeil: Feature = {
   id: 'path-water-mist-veil',
+  sourceId: 'path-water',
+  sourceType: 'path' as const,
   name: 'Mist Veil',
   actionType: 'bonus_action',
   cost: '1 EC',
@@ -62,6 +72,8 @@ export const mistVeil: Feature = {
 
 export const hydrostaticArmor: Feature = {
   id: 'path-water-hydrostatic-armor',
+  sourceId: 'path-water',
+  sourceType: 'path' as const,
   name: 'Hydrostatic Armor',
   actionType: 'passive',
   description: 'While wearing no armour and carrying no shield, your AC equals 13 + your WIS modifier.',
@@ -71,6 +83,8 @@ export const hydrostaticArmor: Feature = {
 // ── Tier 3 augments ──────────────────────────────────────────
 export const healingWave: Feature = {
   id: 'path-water-healing-wave',
+  sourceId: 'path-water',
+  sourceType: 'path' as const,
   name: 'Healing Wave',
   actionType: 'action',
   cost: '3 EC',
@@ -80,6 +94,8 @@ export const healingWave: Feature = {
 
 export const tidalChains: Feature = {
   id: 'path-water-tidal-chains',
+  sourceId: 'path-water',
+  sourceType: 'path' as const,
   name: 'Tidal Chains',
   actionType: 'action',
   cost: '1 EC',
@@ -89,6 +105,8 @@ export const tidalChains: Feature = {
 
 export const ebbAndFlow: Feature = {
   id: 'path-water-ebb-and-flow',
+  sourceId: 'path-water',
+  sourceType: 'path' as const,
   name: 'Ebb and Flow',
   actionType: 'passive',
   description: 'Once per turn, when a creature misses you with a melee attack, you may make an attack roll against a different creature within 5 ft. The attack deals damage equal to your WIS modifier of the same damage type as the original attack.',
@@ -98,6 +116,8 @@ export const ebbAndFlow: Feature = {
 // ── Tier 4 augments ──────────────────────────────────────────
 export const flowmastersGrace: Feature = {
   id: 'path-water-flowmasters-grace',
+  sourceId: 'path-water',
+  sourceType: 'path' as const,
   name: "Flowmaster's Grace",
   actionType: 'passive',
   description: "When you move through a hostile creature's space, that creature must succeed on a DEX save or be unbalanced until the end of its next turn: it can't take reactions and its speed is halved.",
@@ -106,6 +126,8 @@ export const flowmastersGrace: Feature = {
 
 export const icePrison: Feature = {
   id: 'path-water-ice-prison',
+  sourceId: 'path-water',
+  sourceType: 'path' as const,
   name: 'Ice Prison',
   actionType: 'action',
   cost: '5 EC',
@@ -115,6 +137,8 @@ export const icePrison: Feature = {
 
 export const moonwater: Feature = {
   id: 'path-water-moonwater',
+  sourceId: 'path-water',
+  sourceType: 'path' as const,
   name: 'Moonwater',
   actionType: 'action',
   cost: 'X EC',
@@ -201,6 +225,8 @@ export const pathWater: Feature = {
 
 export const earthRecharge: Feature = {
   id: 'path-earth-recharge',
+  sourceId: 'path-earth',
+  sourceType: 'path' as const,
   name: 'Earth Recharge',
   description: "When you don't move on your turn (including no forced movement), regain 1 expended EC.",
   actionType: 'passive',
@@ -210,6 +236,8 @@ export const earthRecharge: Feature = {
 // ── Tier 1 ───────────────────────────────────────────────────
 export const earthenGrasp: Feature = {
   id: 'path-earth-earthen-grasp',
+  sourceId: 'path-earth',
+  sourceType: 'path' as const,
   name: 'Earthen Grasp',
   actionType: 'action',
   cost: '1 EC',
@@ -219,6 +247,8 @@ export const earthenGrasp: Feature = {
 
 export const stonesEndurance: Feature = {
   id: 'path-earth-stones-endurance',
+  sourceId: 'path-earth',
+  sourceType: 'path' as const,
   name: "Stone's Endurance",
   actionType: 'passive',
   description: "When a creature's attack roll against you exceeds your AC by less than your proficiency bonus, reduce the damage you take by your WIS modifier.",
@@ -228,6 +258,8 @@ export const stonesEndurance: Feature = {
 // ── Tier 2 augments ──────────────────────────────────────────
 export const stonewall: Feature = {
   id: 'path-earth-stonewall',
+  sourceId: 'path-earth',
+  sourceType: 'path' as const,
   name: 'Stonewall',
   actionType: 'action',
   cost: '1 EC',
@@ -237,6 +269,8 @@ export const stonewall: Feature = {
 
 export const bulwarkStep: Feature = {
   id: 'path-earth-bulwark-step',
+  sourceId: 'path-earth',
+  sourceType: 'path' as const,
   name: 'Bulwark Step',
   actionType: 'reaction',
   cost: '1 EC',
@@ -246,6 +280,8 @@ export const bulwarkStep: Feature = {
 
 export const gravityAnchor: Feature = {
   id: 'path-earth-gravity-anchor',
+  sourceId: 'path-earth',
+  sourceType: 'path' as const,
   name: 'Gravity Anchor',
   actionType: 'passive',
   description: 'You have advantage on checks and saving throws against forced movement or being knocked prone.',
@@ -255,6 +291,8 @@ export const gravityAnchor: Feature = {
 // ── Tier 3 augments ──────────────────────────────────────────
 export const tectonicTremor: Feature = {
   id: 'path-earth-tectonic-tremor',
+  sourceId: 'path-earth',
+  sourceType: 'path' as const,
   name: 'Tectonic Tremor',
   actionType: 'action',
   cost: '2 EC',
@@ -264,6 +302,8 @@ export const tectonicTremor: Feature = {
 
 export const livingStone: Feature = {
   id: 'path-earth-living-stone',
+  sourceId: 'path-earth',
+  sourceType: 'path' as const,
   name: 'Living Stone',
   actionType: 'bonus_action',
   cost: '2 EC',
@@ -273,6 +313,8 @@ export const livingStone: Feature = {
 
 export const geomanticPulse: Feature = {
   id: 'path-earth-geomantic-pulse',
+  sourceId: 'path-earth',
+  sourceType: 'path' as const,
   name: 'Geomantic Pulse',
   actionType: 'passive',
   description: "Whenever you end your turn on stone or earth, regain 1 temporary HP per EC remaining (up to the amount reduced by Stone's Endurance since your last turn). This occurs after the recharge trigger.",
@@ -282,6 +324,8 @@ export const geomanticPulse: Feature = {
 // ── Tier 4 augments ──────────────────────────────────────────
 export const ironcoreBastion: Feature = {
   id: 'path-earth-ironcore-bastion',
+  sourceId: 'path-earth',
+  sourceType: 'path' as const,
   name: 'Ironcore Bastion',
   actionType: 'action',
   cost: '5 EC',
@@ -291,6 +335,8 @@ export const ironcoreBastion: Feature = {
 
 export const stonecrush: Feature = {
   id: 'path-earth-stonecrush',
+  sourceId: 'path-earth',
+  sourceType: 'path' as const,
   name: 'Stonecrush',
   actionType: 'action',
   cost: '3 EC',
@@ -300,6 +346,8 @@ export const stonecrush: Feature = {
 
 export const stonegripMantle: Feature = {
   id: 'path-earth-stonegrip-mantle',
+  sourceId: 'path-earth',
+  sourceType: 'path' as const,
   name: 'Stonegrip Mantle',
   actionType: 'passive',
   description: 'When you have fewer than 5 EC and are hit by a melee attack, the attacker makes a Strength save. On a failure, it is pushed back 15 ft and restrained by Earthen Grasp at no EC cost. Triggers once per turn, even if you are unconscious.',
@@ -384,6 +432,8 @@ export const pathEarth: Feature = {
 
 export const fireRecharge: Feature = {
   id: 'path-fire-recharge',
+  sourceId: 'path-fire',
+  sourceType: 'path' as const,
   name: 'Fire Recharge',
   description: 'When you reduce an enemy to 0 hit points with fire damage, regain 1 expended EC.',
   actionType: 'passive',
@@ -393,6 +443,8 @@ export const fireRecharge: Feature = {
 // ── Tier 1 ───────────────────────────────────────────────────
 export const flameLash: Feature = {
   id: 'path-fire-flame-lash',
+  sourceId: 'path-fire',
+  sourceType: 'path' as const,
   name: 'Flame Lash',
   actionType: 'bonus_action',
   cost: '1 EC',
@@ -402,6 +454,8 @@ export const flameLash: Feature = {
 
 export const kindledMotion: Feature = {
   id: 'path-fire-kindled-motion',
+  sourceId: 'path-fire',
+  sourceType: 'path' as const,
   name: 'Kindled Motion',
   actionType: 'passive',
   description: 'Your movement speed increases by 10 ft while you are below half your maximum hit points.',
@@ -411,6 +465,8 @@ export const kindledMotion: Feature = {
 // ── Tier 2 augments ──────────────────────────────────────────
 export const scorchingArc: Feature = {
   id: 'path-fire-scorching-arc',
+  sourceId: 'path-fire',
+  sourceType: 'path' as const,
   name: 'Scorching Arc',
   actionType: 'action',
   cost: '2 EC',
@@ -420,6 +476,8 @@ export const scorchingArc: Feature = {
 
 export const firebrand: Feature = {
   id: 'path-fire-firebrand',
+  sourceId: 'path-fire',
+  sourceType: 'path' as const,
   name: 'Firebrand',
   actionType: 'reaction',
   cost: '1 EC',
@@ -429,6 +487,8 @@ export const firebrand: Feature = {
 
 export const searingMomentum: Feature = {
   id: 'path-fire-searing-momentum',
+  sourceId: 'path-fire',
+  sourceType: 'path' as const,
   name: 'Searing Momentum',
   actionType: 'passive',
   description: 'After using all of your movement on your turn, your next melee attack that turn deals an additional 1d8 fire damage.',
@@ -438,6 +498,8 @@ export const searingMomentum: Feature = {
 // ── Tier 3 augments ──────────────────────────────────────────
 export const infernoHalo: Feature = {
   id: 'path-fire-inferno-halo',
+  sourceId: 'path-fire',
+  sourceType: 'path' as const,
   name: 'Inferno Halo',
   actionType: 'passive',
   description: 'At the start of your turn, each enemy within 5 ft takes 1 fire damage per EC you currently have.',
@@ -446,6 +508,8 @@ export const infernoHalo: Feature = {
 
 export const ashenGrasp: Feature = {
   id: 'path-fire-ashen-grasp',
+  sourceId: 'path-fire',
+  sourceType: 'path' as const,
   name: 'Ashen Grasp',
   actionType: 'action',
   cost: '1 EC',
@@ -455,6 +519,8 @@ export const ashenGrasp: Feature = {
 
 export const explosiveCast: Feature = {
   id: 'path-fire-explosive-cast',
+  sourceId: 'path-fire',
+  sourceType: 'path' as const,
   name: 'Explosive Cast',
   actionType: 'passive',
   description: 'When you reduce a creature to 0 HP with fire damage, creatures within 5 ft of the target take fire damage equal to your WIS modifier.',
@@ -464,6 +530,8 @@ export const explosiveCast: Feature = {
 // ── Tier 4 augments ──────────────────────────────────────────
 export const phoenixBloom: Feature = {
   id: 'path-fire-phoenix-bloom',
+  sourceId: 'path-fire',
+  sourceType: 'path' as const,
   name: 'Phoenix Bloom',
   actionType: 'bonus_action',
   cost: 'X EC (1/long rest)',
@@ -474,6 +542,8 @@ export const phoenixBloom: Feature = {
 
 export const meteorDrop: Feature = {
   id: 'path-fire-meteor-drop',
+  sourceId: 'path-fire',
+  sourceType: 'path' as const,
   name: 'Meteor Drop',
   actionType: 'action',
   cost: '5 EC',
@@ -483,6 +553,8 @@ export const meteorDrop: Feature = {
 
 export const burningDominion: Feature = {
   id: 'path-fire-burning-dominion',
+  sourceId: 'path-fire',
+  sourceType: 'path' as const,
   name: 'Burning Dominion',
   actionType: 'passive',
   description: 'When you spend 2 or more EC in a single turn, enemies within a 10 ft radius are Ignited.',
@@ -567,6 +639,8 @@ export const pathFire: Feature = {
 
 export const airRecharge: Feature = {
   id: 'path-air-recharge',
+  sourceId: 'path-air',
+  sourceType: 'path' as const,
   name: 'Air Recharge',
   description: 'If you move 20 ft on your turn and have not been hit by an attack since the start of your last turn, regain 1 expended EC.',
   actionType: 'passive',
@@ -576,6 +650,8 @@ export const airRecharge: Feature = {
 // ── Tier 1 ───────────────────────────────────────────────────
 export const cyclonePalm: Feature = {
   id: 'path-air-cyclone-palm',
+  sourceId: 'path-air',
+  sourceType: 'path' as const,
   name: 'Cyclone Palm',
   actionType: 'action',
   cost: '1 EC',
@@ -585,6 +661,8 @@ export const cyclonePalm: Feature = {
 
 export const whisperstep: Feature = {
   id: 'path-air-whisperstep',
+  sourceId: 'path-air',
+  sourceType: 'path' as const,
   name: 'Whisperstep',
   actionType: 'action',
   description: 'Your speed is halved this turn; you have advantage on Stealth checks until the end of your turn.',
@@ -594,6 +672,8 @@ export const whisperstep: Feature = {
 // ── Tier 2 augments ──────────────────────────────────────────
 export const galeStep: Feature = {
   id: 'path-air-gale-step',
+  sourceId: 'path-air',
+  sourceType: 'path' as const,
   name: 'Gale Step',
   actionType: 'reaction',
   cost: '1 EC',
@@ -603,6 +683,8 @@ export const galeStep: Feature = {
 
 export const spiralMomentum: Feature = {
   id: 'path-air-spiral-momentum',
+  sourceId: 'path-air',
+  sourceType: 'path' as const,
   name: 'Spiral Momentum',
   actionType: 'passive',
   description: 'Your speed increases by 10 ft. You may Dash as a bonus action without provoking opportunity attacks.',
@@ -611,6 +693,8 @@ export const spiralMomentum: Feature = {
 
 export const cycloneFlurry: Feature = {
   id: 'path-air-cyclone-flurry',
+  sourceId: 'path-air',
+  sourceType: 'path' as const,
   name: 'Cyclone Flurry',
   actionType: 'passive',
   description: 'If you move 20 ft in a straight line before using Cyclone Palm, the EC cost is refunded if the target fails the saving throw.',
@@ -620,6 +704,8 @@ export const cycloneFlurry: Feature = {
 // ── Tier 3 augments ──────────────────────────────────────────
 export const shearingVortex: Feature = {
   id: 'path-air-shearing-vortex',
+  sourceId: 'path-air',
+  sourceType: 'path' as const,
   name: 'Shearing Vortex',
   actionType: 'action',
   cost: '2 EC',
@@ -629,6 +715,8 @@ export const shearingVortex: Feature = {
 
 export const eyeOfTheStorm: Feature = {
   id: 'path-air-eye-of-the-storm',
+  sourceId: 'path-air',
+  sourceType: 'path' as const,
   name: 'Eye of the Storm',
   actionType: 'passive',
   description: 'You and allies within 10 ft have advantage on DEX saving throws against effects you can see. Does not function while wearing heavy armour.',
@@ -637,6 +725,8 @@ export const eyeOfTheStorm: Feature = {
 
 export const aerialSentry: Feature = {
   id: 'path-air-aerial-sentry',
+  sourceId: 'path-air',
+  sourceType: 'path' as const,
   name: 'Aerial Sentry',
   actionType: 'bonus_action',
   description: 'Hover up to 5 ft above the ground for 1 minute. While hovering: ignore ground-level difficult terrain (including magical), gain +1 AC against ranged attacks, and move through hostile creature spaces (you cannot end your turn there).',
@@ -646,6 +736,8 @@ export const aerialSentry: Feature = {
 // ── Tier 4 augments ──────────────────────────────────────────
 export const sovereignWinds: Feature = {
   id: 'path-air-sovereign-winds',
+  sourceId: 'path-air',
+  sourceType: 'path' as const,
   name: 'Sovereign Winds',
   actionType: 'bonus_action',
   cost: '1/long rest',
@@ -656,6 +748,8 @@ export const sovereignWinds: Feature = {
 
 export const reedInTheWind: Feature = {
   id: 'path-air-reed-in-the-wind',
+  sourceId: 'path-air',
+  sourceType: 'path' as const,
   name: 'Reed in the Wind',
   actionType: 'bonus_action',
   cost: '5 EC',
@@ -665,6 +759,8 @@ export const reedInTheWind: Feature = {
 
 export const skywardensRebuke: Feature = {
   id: 'path-air-skywardens-rebuke',
+  sourceId: 'path-air',
+  sourceType: 'path' as const,
   name: "Skywarden's Rebuke",
   actionType: 'reaction',
   cost: '4 EC',

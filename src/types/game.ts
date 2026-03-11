@@ -184,7 +184,7 @@ export interface Feature {
   /** Tags for filtering/display */
   tags?: string[];
   sourceId?: string;
-  sourceType?: 'class' | 'subclass' | 'background' | 'feat' | 'species';
+  sourceType?: 'class' | 'subclass' | 'background' | 'feat' | 'species' | 'path';
 
   // ── Resource grant ─────────────────────────────────────────
   /**
