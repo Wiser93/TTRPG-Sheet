@@ -4,6 +4,8 @@ import { useItems, useSpells, useClasses, useSubclasses, useFeats, useAllSpecies
 import { upsertItem, deleteItem, upsertSpell, deleteSpell, upsertClass, deleteClass, upsertFeat, deleteFeat, upsertSpecies, deleteSpecies, upsertBackground, deleteBackground, upsertFeature, deleteFeature, upsertSubclass, deleteSubclass, upsertItemProperty, deleteItemProperty } from '@/db/gameDatabase';
 import { elementalShaperClass, elementalShaperFeatures } from '@/data/elementalShaper';
 import { theHarmonist, theHarmonistFeatures } from '@/data/theHarmonist';
+import { seedSrdProperties } from '@/data/srdProperties';
+import { seedSrdItems } from '@/data/srdItems';
 import { SlidePanel } from '@/components/ui/SlidePanel';
 import { ItemForm } from './forms/ItemForm';
 import { SpellForm } from './forms/SpellForm';
@@ -69,6 +71,28 @@ export function DatabaseView() {
       }
       await upsertSubclass(theHarmonist);
       setDatabaseSection('subclasses');
+    } finally {
+      setSeeding(false);
+    }
+  }
+
+  async function seedSRDProperties() {
+    if (!confirm('Import all SRD item properties (weapon properties, armour properties, and mastery properties)?\n\nExisting entries with matching IDs will be updated.')) return;
+    setSeeding(true);
+    try {
+      await seedSrdProperties();
+      setDatabaseSection('properties');
+    } finally {
+      setSeeding(false);
+    }
+  }
+
+  async function seedSRDItems() {
+    if (!confirm('Import all SRD items (weapons, armour, gear, tools, and more)?\n\nRun the SRD Properties import first so property tooltips resolve correctly.\nExisting entries with matching IDs will be updated.')) return;
+    setSeeding(true);
+    try {
+      await seedSrdItems();
+      setDatabaseSection('items');
     } finally {
       setSeeding(false);
     }
@@ -189,6 +213,28 @@ export function DatabaseView() {
             title="Add The Harmonist as a starter subclass"
           >
             {seeding ? '…' : '🌀 Add The Harmonist'}
+          </button>
+        )}
+        {databaseSection === 'properties' && (
+          <button
+            className="btn btn-ghost"
+            style={{ fontSize: 12 }}
+            onClick={seedSRDProperties}
+            disabled={seeding}
+            title="Import all SRD item properties"
+          >
+            {seeding ? '…' : '📋 Import SRD Properties'}
+          </button>
+        )}
+        {databaseSection === 'items' && (
+          <button
+            className="btn btn-ghost"
+            style={{ fontSize: 12 }}
+            onClick={seedSRDItems}
+            disabled={seeding}
+            title="Import all SRD items"
+          >
+            {seeding ? '…' : '📦 Import SRD Items'}
           </button>
         )}
         <button
