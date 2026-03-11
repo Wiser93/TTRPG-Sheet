@@ -11,7 +11,7 @@ import type { DerivedStats } from '@/types/character';
  * and returns the derived stats.
  */
 export function useCharacter(characterId: string | null) {
-  const { loadCharacter, unloadCharacter, character, syncResourceMaxes } = useCharacterStore();
+  const { loadCharacter, unloadCharacter, character, syncResourceMaxes, patchCharacter } = useCharacterStore();
   const [derived, setDerived] = useState<DerivedStats | null>(null);
 
   // Live-query classes, species, etc. for derived stat calculation
@@ -52,6 +52,10 @@ export function useCharacter(characterId: string | null) {
       // Sync any formula-based resource maxes back into the store
       if (Object.keys(d.resourceMaxes).length > 0) {
         syncResourceMaxes(d.resourceMaxes);
+      }
+      // Sync derived maxHP back so longRest (which uses health.max) is always accurate
+      if (character.health.max !== d.maxHP) {
+        patchCharacter({ health: { ...character.health, max: d.maxHP } });
       }
     } catch (e) {
       console.error('Failed to derive stats:', e);

@@ -59,8 +59,8 @@ interface CharacterStore {
   setConcentration: (spellId: string | undefined) => void;
 
   // ── Rests ──────────────────────────────────────────────────
-  shortRest: (hitDieResults: number) => void;
-  longRest: (grantInspiration?: boolean) => void;
+  shortRest: (healAmount: number, diceSpent?: Record<string, number>) => void;
+  longRest: (grantInspiration?: boolean, maxHP?: number) => void;
 
   // ── Inspiration ────────────────────────────────────────────
   setInspiration: (value: boolean) => void;
@@ -83,6 +83,9 @@ interface CharacterStore {
   setBaseStats: (stats: import('@/types/character').StatBlock) => void;
   /** Set a single base stat */
   setBaseStat: (stat: import('@/types/game').StatKey, value: number) => void;
+
+  // ── Sheet Config ───────────────────────────────────────────
+  patchSheetConfig: (changes: Partial<import('@/types/character').SheetConfig>) => void;
 
   // ── Bio / Meta ─────────────────────────────────────────────
   patchMeta: (changes: Partial<import('@/types/character').CharacterMeta>) => void;
@@ -280,17 +283,38 @@ export const useCharacterStore = create<CharacterStore>()(
     }),
 
     // ── Rests ────────────────────────────────────────────────
-    shortRest: (hitDieResults) => mutate(set, get, c => {
-      c.health.current = Math.min(c.health.max, c.health.current + hitDieResults);
+    shortRest: (healAmount, diceSpent = {}) => mutate(set, get, c => {
+      c.health.current = Math.min(c.health.max, c.health.current + healAmount);
+      if (!c.health.hitDiceUsed) c.health.hitDiceUsed = {};
+      for (const [classId, count] of Object.entries(diceSpent) as [string, number][]) {
+        c.health.hitDiceUsed[classId] = (c.health.hitDiceUsed[classId] ?? 0) + count;
+      }
       c.resources
         .filter(r => r.rechargeOn === 'short_rest')
         .forEach(r => { r.current = r.max; });
     }),
-    longRest: (grantInspiration = false) => mutate(set, get, c => {
-      c.health.current = c.health.max;
+    longRest: (grantInspiration = false, maxHP?: number) => mutate(set, get, c => {
+      const resolvedMax = maxHP ?? c.health.max;
+      c.health.current = resolvedMax;
+      c.health.max = resolvedMax;
       c.health.temp = 0;
       c.health.deathSaves = { successes: 0, failures: 0 };
       c.health.stable = false;
+      // Restore hit dice: regain up to half total level (rounded up), capped per class
+      const used = c.health.hitDiceUsed ?? {};
+      const restored: Record<string, number> = {};
+      let remaining = Math.ceil(c.classes.reduce((s, cl) => s + cl.level, 0) / 2);
+      for (const cls of c.classes) {
+        const spent = used[cls.classId] ?? 0;
+        if (spent > 0 && remaining > 0) {
+          const restore = Math.min(spent, remaining);
+          restored[cls.classId] = (used[cls.classId] ?? 0) - restore;
+          remaining -= restore;
+        } else {
+          restored[cls.classId] = used[cls.classId] ?? 0;
+        }
+      }
+      c.health.hitDiceUsed = restored;
       c.spellSlots.forEach(s => { s.current = s.max; });
       if (c.pactSlots) c.pactSlots.current = c.pactSlots.max;
       c.resources
@@ -389,6 +413,11 @@ export const useCharacterStore = create<CharacterStore>()(
 
     setBaseStat: (stat, value) => mutate(set, get, c => {
       c.stats.base[stat] = value;
+    }),
+
+    // ── Sheet Config ────────────────────────────────────────
+    patchSheetConfig: (changes) => mutate(set, get, c => {
+      c.sheetConfig = { ...(c.sheetConfig ?? {}), ...changes };
     }),
 
     // ── Bio / Meta ──────────────────────────────────────────

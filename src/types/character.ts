@@ -195,6 +195,12 @@ export interface CharacterHealth {
   maxOverride?: number;
   deathSaves: DeathSaves;
   stable: boolean;
+  /**
+   * Hit dice spent since last long rest, keyed by classId.
+   * e.g. { 'elemental-shaper': 2 } means 2 d10s spent.
+   * Long rest restores all; short rest spends some.
+   */
+  hitDiceUsed?: Record<string, number>;
 }
 
 export interface CharacterCombat {
@@ -223,6 +229,13 @@ export interface CharacterBiography {
   bonds?: string;
   flaws?: string;
   notes?: string;
+}
+
+export interface SheetConfig {
+  /** Hide the Spells tab entirely (for non-casters) */
+  hideSpellsTab?: boolean;
+  /** Show stat modifiers as the primary large number (default: false = show score) */
+  showModsAsPrimary?: boolean;
 }
 
 export interface Character {
@@ -288,6 +301,11 @@ export interface Character {
     tools: string[];
   };
 
+  /**
+   * Per-character sheet display settings.
+   * Stored on the character so each character can have different config.
+   */
+  sheetConfig?: SheetConfig;
   /** Any extra custom fields for house rules */
   customFields?: Record<string, unknown>;
 
@@ -330,4 +348,6 @@ export interface DerivedStats {
   extraWeaponProfs: string[];
   extraArmorProfs: string[];
   extraToolProfs: string[];
+  /** Available hit dice per class: { classId: { die, total, used, available } } */
+  hitDice: Record<string, { die: number; total: number; used: number; available: number }>;
 }

@@ -547,6 +547,22 @@ export function deriveStats(character: Character, gameData: GameData): DerivedSt
     extraWeaponProfs,
     extraArmorProfs,
     extraToolProfs,
+    hitDice: (() => {
+      const result: Record<string, { die: number; total: number; used: number; available: number }> = {};
+      const used = character.health.hitDiceUsed ?? {};
+      for (const classEntry of character.classes) {
+        const cls = gameData.classes.find(c => c.id === classEntry.classId);
+        if (!cls) continue;
+        const spentCount = used[classEntry.classId] ?? 0;
+        result[classEntry.classId] = {
+          die: cls.hitDie,
+          total: classEntry.level,
+          used: spentCount,
+          available: Math.max(0, classEntry.level - spentCount),
+        };
+      }
+      return result;
+    })(),
   };
 }
 

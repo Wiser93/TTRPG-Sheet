@@ -6,8 +6,9 @@ import { OriginsSection } from './OriginsSection';
 import { ClassSection } from './ClassSection';
 import { ProficiencySection } from './ProficiencySection';
 import { BioSection } from './BioSection';
+import { ConfigSection } from './ConfigSection';
 
-type BuilderSection = 'stats' | 'origins' | 'classes' | 'profs' | 'bio';
+type BuilderSection = 'stats' | 'origins' | 'classes' | 'profs' | 'bio' | 'config';
 
 const SECTIONS: { key: BuilderSection; label: string; icon: string; hint: string }[] = [
   { key: 'stats',   label: 'Ability Scores', icon: '🎲', hint: 'Set your six base stats' },
@@ -15,6 +16,7 @@ const SECTIONS: { key: BuilderSection; label: string; icon: string; hint: string
   { key: 'classes', label: 'Classes',        icon: '📜', hint: 'Levels, features & HP' },
   { key: 'profs',   label: 'Proficiencies',  icon: '🛡', hint: 'Skills, armor, weapons, tools' },
   { key: 'bio',     label: 'Bio',            icon: '📖', hint: 'Name, appearance & backstory' },
+  { key: 'config',  label: 'Settings',       icon: '⚙️',  hint: 'Sheet display & tab options' },
 ];
 
 export function CharacterBuilderView() {
@@ -89,6 +91,7 @@ export function CharacterBuilderView() {
         {activeSection === 'classes' && <ClassSection character={character} derivedMaxHP={derived.maxHP} />}
         {activeSection === 'profs'   && <ProficiencySection character={character} />}
         {activeSection === 'bio'     && <BioSection />}
+        {activeSection === 'config'  && <ConfigSection />}
       </main>
 
       <div style={{

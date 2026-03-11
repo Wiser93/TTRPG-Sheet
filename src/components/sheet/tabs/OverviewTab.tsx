@@ -42,13 +42,34 @@ interface Props { character: Character; derived: DerivedStats; }
 export function OverviewTab({ character, derived }: Props) {
   const { setCurrentHP, shortRest, longRest, setFeatureCardState, setInspiration } = useCharacterStore();
   const [restReminder, setRestReminder] = useState<{ type: 'short' | 'long'; features: Feature[] } | null>(null);
+  const [shortRestOpen, setShortRestOpen] = useState(false);
+  // diceToSpend: { classId -> count } — how many dice queued to spend
+  const [diceToSpend, setDiceToSpend] = useState<Record<string, number>>({});
+  // diceRolls: individual roll results accumulated this rest
+  const [diceRolls, setDiceRolls] = useState<number[]>([]);
 
   function handleShortRest() {
+    setDiceToSpend({});
+    setDiceRolls([]);
+    setShortRestOpen(true);
+  }
+
+  function rollDie(sides: number, classId: string) {
+    const roll = Math.floor(Math.random() * sides) + 1;
+    const conMod = derived.statMods.constitution;
+    const total = Math.max(1, roll + conMod);
+    setDiceRolls(prev => [...prev, total]);
+    setDiceToSpend(prev => ({ ...prev, [classId]: (prev[classId] ?? 0) + 1 }));
+  }
+
+  function confirmShortRest() {
+    const totalHeal = diceRolls.reduce((s, n) => s + n, 0);
+    shortRest(totalHeal, diceToSpend);
+    setShortRestOpen(false);
     const triggered = derived.allFeatures.filter(f => {
       const t = (f.trigger ?? '').toLowerCase();
       return t.includes('short rest') || t === 'short_rest';
     });
-    shortRest(0);
     if (triggered.length > 0) setRestReminder({ type: 'short', features: triggered });
   }
 
@@ -57,9 +78,8 @@ export function OverviewTab({ character, derived }: Props) {
       const t = (f.trigger ?? '').toLowerCase();
       return t.includes('long rest') || t === 'long_rest' || t.includes('rest');
     });
-    // Check for grantHeroicInspiration features
     const grantsInspiration = derived.allFeatures.some(f => f.grantHeroicInspiration === 'long_rest');
-    longRest(grantsInspiration);
+    longRest(grantsInspiration, derived.maxHP);
     if (triggered.length > 0) setRestReminder({ type: 'long', features: triggered });
   }
 
@@ -143,27 +163,27 @@ export function OverviewTab({ character, derived }: Props) {
       </div>
 
       {/* Stat block */}
-      <div className="card">
-        <p className="label" style={{ marginBottom: 10 }}>Ability Scores</p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-          {(Object.keys(STAT_LABELS) as StatKey[]).map(stat => (
-            <div key={stat} style={{
-              background: 'var(--bg-2)',
-              borderRadius: 6,
-              padding: '8px 4px',
-              textAlign: 'center',
-            }}>
-              <div className="label">{STAT_LABELS[stat]}</div>
-              <div style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.1 }}>
-                {derived.stats[stat]}
-              </div>
-              <div style={{ fontSize: 13, color: 'var(--text-2)' }}>
-                {sign(derived.statMods[stat])}
-              </div>
+      {(() => {
+        const showMod = character.sheetConfig?.showModsAsPrimary ?? false;
+        return (
+          <div className="card">
+            <p className="label" style={{ marginBottom: 10 }}>Ability Scores</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+              {(Object.keys(STAT_LABELS) as StatKey[]).map(stat => (
+                <div key={stat} style={{ background: 'var(--bg-2)', borderRadius: 6, padding: '8px 4px', textAlign: 'center' }}>
+                  <div className="label">{STAT_LABELS[stat]}</div>
+                  <div style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.1 }}>
+                    {showMod ? sign(derived.statMods[stat]) : derived.stats[stat]}
+                  </div>
+                  <div style={{ fontSize: 13, color: 'var(--text-2)' }}>
+                    {showMod ? derived.stats[stat] : sign(derived.statMods[stat])}
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
+        );
+      })()}
 
       {/* Saving throws */}
       <div className="card">
@@ -187,31 +207,6 @@ export function OverviewTab({ character, derived }: Props) {
         </div>
       </div>
 
-      {/* Skills */}
-      <div className="card">
-        <p className="label" style={{ marginBottom: 8 }}>
-          Skills · Passive Perception {derived.passivePerception}
-        </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          {(Object.keys(SKILL_LABELS) as SkillKey[]).map(skill => {
-            const s = derived.skills[skill];
-            return (
-              <div key={skill} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-                <span style={{
-                  width: 10, height: 10, borderRadius: s.expert ? 2 : '50%',
-                  background: s.proficient ? 'var(--accent-4)' : 'var(--bg-3)',
-                  border: '1px solid var(--border)',
-                  flexShrink: 0,
-                }} />
-                <span style={{ color: s.proficient ? 'var(--text-0)' : 'var(--text-2)' }}>
-                  {SKILL_LABELS[skill]}
-                </span>
-                <span style={{ marginLeft: 'auto', fontWeight: 600 }}>{sign(s.bonus)}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
 
       {/* Heroic Inspiration */}
       <div style={{
@@ -248,6 +243,144 @@ export function OverviewTab({ character, derived }: Props) {
           {character.combat.inspiration ? '✓' : ''}
         </div>
       </div>
+
+
+      {/* Skills */}
+      <div className="card">
+        <p className="label" style={{ marginBottom: 8 }}>
+          Skills · Passive Perception {derived.passivePerception}
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          {(Object.keys(SKILL_LABELS) as SkillKey[]).map(skill => {
+            const s = derived.skills[skill];
+            return (
+              <div key={skill} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+                <span style={{
+                  width: 10, height: 10, borderRadius: s.expert ? 2 : '50%',
+                  background: s.proficient ? 'var(--accent-4)' : 'var(--bg-3)',
+                  border: '1px solid var(--border)',
+                  flexShrink: 0,
+                }} />
+                <span style={{ color: s.proficient ? 'var(--text-0)' : 'var(--text-2)' }}>
+                  {SKILL_LABELS[skill]}
+                </span>
+                <span style={{ marginLeft: 'auto', fontWeight: 600 }}>{sign(s.bonus)}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Short rest modal */}
+      {shortRestOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 1000, padding: 16 }}
+          onClick={() => setShortRestOpen(false)}>
+          <div style={{ background: 'var(--bg-1)', borderRadius: 16, padding: 20, width: '100%', maxWidth: 480, maxHeight: '80dvh', overflowY: 'auto', boxShadow: '0 -4px 40px rgba(0,0,0,0.4)' }}
+            onClick={e => e.stopPropagation()}>
+
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+              <p style={{ fontSize: 15, fontWeight: 700 }}>☕ Short Rest</p>
+              <button onClick={() => setShortRestOpen(false)} style={{ fontSize: 22, color: 'var(--text-2)', lineHeight: 1, padding: '0 4px' }}>×</button>
+            </div>
+            <p style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 16 }}>
+              Tap a die to roll it. Each roll adds that die + CON modifier to your HP.
+            </p>
+
+            {/* Per-class hit dice */}
+            {Object.entries(derived.hitDice).map(([classId, hd]) => {
+              const spending = diceToSpend[classId] ?? 0;
+              const conMod = derived.statMods.constitution;
+              return (
+                <div key={classId} style={{ background: 'var(--bg-2)', borderRadius: 8, padding: '12px 14px', marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <div>
+                      <span style={{ fontWeight: 700, fontSize: 15 }}>d{hd.die}</span>
+                      <span style={{ fontSize: 12, color: 'var(--text-2)', marginLeft: 8 }}>
+                        {hd.available} of {hd.total} remaining
+                        {hd.used > 0 && <span style={{ color: 'var(--accent-2)' }}> ({hd.used} spent since last long rest)</span>}
+                      </span>
+                    </div>
+                    <span style={{ fontSize: 11, color: 'var(--text-2)' }}>
+                      CON {conMod >= 0 ? '+' : ''}{conMod}
+                    </span>
+                  </div>
+
+                  {/* Dice pips */}
+                  <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 10 }}>
+                    {Array.from({ length: hd.total }).map((_, i) => {
+                      const isUsedBefore = i < hd.used;
+                      const isSpentThisRest = i >= hd.used && i < hd.used + spending;
+                      return (
+                        <div key={i} style={{
+                          width: 18, height: 18, borderRadius: 4,
+                          background: isUsedBefore ? 'var(--bg-3)' : isSpentThisRest ? 'var(--accent)' : 'color-mix(in srgb,var(--accent) 30%,var(--bg-2))',
+                          border: `1px solid ${isUsedBefore ? 'var(--border)' : 'var(--accent)'}`,
+                          opacity: isUsedBefore ? 0.3 : 1,
+                          fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          color: isSpentThisRest ? '#fff' : 'var(--accent)',
+                          fontWeight: 700,
+                        }}>
+                          {isSpentThisRest ? '✓' : isUsedBefore ? '×' : ''}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Roll button */}
+                  <button
+                    className="btn btn-primary"
+                    style={{ width: '100%', fontSize: 14, padding: '10px 0' }}
+                    disabled={spending >= hd.available}
+                    onClick={() => rollDie(hd.die, classId)}
+                  >
+                    {spending >= hd.available ? 'No dice left' : `Roll d${hd.die} (+${conMod >= 0 ? '+' : ''}${conMod} CON)`}
+                  </button>
+                </div>
+              );
+            })}
+
+            {Object.keys(derived.hitDice).length === 0 && (
+              <p style={{ fontSize: 13, color: 'var(--text-2)', textAlign: 'center', padding: '16px 0' }}>
+                No hit dice available (add a class in the builder).
+              </p>
+            )}
+
+            {/* Roll history */}
+            {diceRolls.length > 0 && (
+              <div style={{ background: 'color-mix(in srgb,var(--accent) 8%,var(--bg-2))', borderRadius: 8, padding: '10px 14px', marginBottom: 10 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Rolls this rest</p>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+                  {diceRolls.map((r, i) => (
+                    <span key={i} style={{
+                      fontSize: 14, fontWeight: 700, padding: '3px 10px', borderRadius: 6,
+                      background: 'var(--accent)', color: '#fff',
+                    }}>{r > 0 ? '+' : ''}{r}</span>
+                  ))}
+                </div>
+                <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)' }}>
+                  Total healing: +{diceRolls.reduce((s, n) => s + n, 0)} HP
+                  <span style={{ fontWeight: 400, color: 'var(--text-2)', marginLeft: 6 }}>
+                    (current: {character.health.current} → {Math.min(derived.maxHP, character.health.current + diceRolls.reduce((s, n) => s + n, 0))})
+                  </span>
+                </p>
+              </div>
+            )}
+
+            {/* Confirm */}
+            <div style={{ padding: '10px 0 0', borderTop: '1px solid var(--border)', display: 'flex', gap: 10 }}>
+              <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setShortRestOpen(false)}>
+                Cancel
+              </button>
+              <button className="btn btn-primary" style={{ flex: 2, fontSize: 14 }} onClick={confirmShortRest}>
+                {diceRolls.length > 0
+                  ? `Finish Rest (+${diceRolls.reduce((s, n) => s + n, 0)} HP)`
+                  : 'Rest without spending dice'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Rest reminder modal */}
       {restReminder && (
