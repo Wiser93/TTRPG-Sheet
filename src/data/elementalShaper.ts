@@ -17,6 +17,8 @@ export const ELEMENTAL_SHAPER_ID = 'elemental-shaper';
 
 export const featureElementalCharges: Feature = {
   id: 'ec-feature',
+  sourceId: ELEMENTAL_SHAPER_ID,
+  sourceType: 'class' as const,
   name: 'Elemental Charges',
   actionType: 'passive',
   description:
@@ -40,6 +42,8 @@ export const featureElementalCharges: Feature = {
 
 export const featureElementalEmbodiment: Feature = {
   id: 'elemental-embodiment',
+  sourceId: ELEMENTAL_SHAPER_ID,
+  sourceType: 'class' as const,
   name: 'Elemental Embodiment',
   actionType: 'passive',
   description:
@@ -67,6 +71,8 @@ export const featureElementalEmbodiment: Feature = {
 
 export const featureExtraAttack: Feature = {
   id: 'extra-attack',
+  sourceId: ELEMENTAL_SHAPER_ID,
+  sourceType: 'class' as const,
   name: 'Extra Attack',
   actionType: 'passive',
   description:
@@ -80,6 +86,8 @@ export const featureExtraAttack: Feature = {
 
 export const featureElementalSurge: Feature = {
   id: 'elemental-surge',
+  sourceId: ELEMENTAL_SHAPER_ID,
+  sourceType: 'class' as const,
   name: 'Elemental Surge',
   actionType: 'action',
   cost: '1/long rest',
@@ -93,6 +101,8 @@ export const featureElementalSurge: Feature = {
 
 export const featureElementalCombo: Feature = {
   id: 'elemental-combo',
+  sourceId: ELEMENTAL_SHAPER_ID,
+  sourceType: 'class' as const,
   name: 'Elemental Combo',
   actionType: 'action',
   description:
@@ -107,6 +117,8 @@ export const featureElementalCombo: Feature = {
 
 export const featureImbuedStrike: Feature = {
   id: 'imbued-strike',
+  sourceId: ELEMENTAL_SHAPER_ID,
+  sourceType: 'class' as const,
   name: 'Imbued Strike',
   actionType: 'action',
   cost: '1 EC',
@@ -125,6 +137,8 @@ export const featureImbuedStrike: Feature = {
 
 export const featureElementalResonance: Feature = {
   id: 'elemental-resonance',
+  sourceId: ELEMENTAL_SHAPER_ID,
+  sourceType: 'class' as const,
   name: 'Elemental Resonance',
   actionType: 'passive',
   description:
@@ -148,6 +162,8 @@ export const featureElementalResonance: Feature = {
 
 export const featureElementalOverflow: Feature = {
   id: 'elemental-overflow',
+  sourceId: ELEMENTAL_SHAPER_ID,
+  sourceType: 'class' as const,
   name: 'Elemental Overflow',
   actionType: 'passive',
   description:
@@ -161,6 +177,8 @@ export const featureElementalOverflow: Feature = {
 
 export const featureElementalWellspring: Feature = {
   id: 'elemental-wellspring',
+  sourceId: ELEMENTAL_SHAPER_ID,
+  sourceType: 'class' as const,
   name: 'Elemental Wellspring',
   actionType: 'passive',
   description:
@@ -176,6 +194,8 @@ export const featureElementalWellspring: Feature = {
 
 export const featureAvatarForm: Feature = {
   id: 'avatar-form',
+  sourceId: ELEMENTAL_SHAPER_ID,
+  sourceType: 'class' as const,
   name: 'Avatar Form',
   actionType: 'bonus_action',
   cost: '1/long rest',

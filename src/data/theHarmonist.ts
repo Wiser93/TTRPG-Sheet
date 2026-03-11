@@ -13,6 +13,8 @@ import type { Subclass, Feature } from '@/types/game';
 
 export const featureBalanceInAllThings: Feature = {
   id: 'harmonist-balance-in-all-things',
+  sourceId: 'the-harmonist',
+  sourceType: 'subclass' as const,
   name: 'Balance in All Things',
   actionType: 'passive',
   description:
@@ -33,6 +35,8 @@ export const featureBalanceInAllThings: Feature = {
 
 export const featureResonantOverload: Feature = {
   id: 'harmonist-resonant-overload',
+  sourceId: 'the-harmonist',
+  sourceType: 'subclass' as const,
   name: 'Resonant Overload',
   actionType: 'passive',
   description:
@@ -51,6 +55,8 @@ export const featureResonantOverload: Feature = {
 
 export const featureElementalCascade: Feature = {
   id: 'harmonist-elemental-cascade',
+  sourceId: 'the-harmonist',
+  sourceType: 'subclass' as const,
   name: 'Elemental Cascade',
   actionType: 'passive',
   description:
@@ -68,6 +74,8 @@ export const featureElementalCascade: Feature = {
 
 export const featureCoreOfTheSpiral: Feature = {
   id: 'harmonist-core-of-the-spiral',
+  sourceId: 'the-harmonist',
+  sourceType: 'subclass' as const,
   name: 'Core of the Spiral',
   actionType: 'passive',
   description:

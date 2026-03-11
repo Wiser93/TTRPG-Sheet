@@ -32,7 +32,7 @@ export async function upsertItem(item: InsertPayload<DBItem> & { id?: string }):
     await db.items.put(updated as DBItem);
     return existing.id;
   }
-  const record: DBItem = { ...item, ...makeDBMeta() } as DBItem;
+  const record: DBItem = { ...makeDBMeta(), ...item } as DBItem;
   await db.items.add(record);
   return record.id;
 }
@@ -70,7 +70,7 @@ export async function upsertSpell(spell: InsertPayload<DBSpell> & { id?: string 
     await db.spells.put(markDirty<DBSpell>({ ...existing, ...spell }) as DBSpell);
     return existing.id;
   }
-  const record: DBSpell = { ...spell, ...makeDBMeta() } as DBSpell;
+  const record: DBSpell = { ...makeDBMeta(), ...spell } as DBSpell;
   await db.spells.add(record);
   return record.id;
 }
@@ -97,7 +97,7 @@ export async function upsertClass(cls: InsertPayload<DBClass> & { id?: string })
     await db.classes.put(markDirty<DBClass>({ ...existing, ...cls }) as DBClass);
     return existing.id;
   }
-  const record: DBClass = { ...cls, ...makeDBMeta() } as DBClass;
+  const record: DBClass = { ...makeDBMeta(), ...cls } as DBClass;
   await db.classes.add(record);
   return record.id;
 }
@@ -120,7 +120,7 @@ export async function upsertFeat(feat: InsertPayload<DBFeat> & { id?: string }):
     await db.feats.put(markDirty<DBFeat>({ ...existing, ...feat }) as DBFeat);
     return existing.id;
   }
-  const record: DBFeat = { ...feat, ...makeDBMeta() } as DBFeat;
+  const record: DBFeat = { ...makeDBMeta(), ...feat } as DBFeat;
   await db.feats.add(record);
   return record.id;
 }
@@ -143,7 +143,7 @@ export async function upsertSpecies(s: InsertPayload<DBSpecies> & { id?: string 
     await db.species.put(markDirty<DBSpecies>({ ...existing, ...s }) as DBSpecies);
     return existing.id;
   }
-  const record: DBSpecies = { ...s, ...makeDBMeta() } as DBSpecies;
+  const record: DBSpecies = { ...makeDBMeta(), ...s } as DBSpecies;
   await db.species.add(record);
   return record.id;
 }
@@ -166,7 +166,7 @@ export async function upsertBackground(bg: InsertPayload<DBBackground> & { id?: 
     await db.backgrounds.put(markDirty<DBBackground>({ ...existing, ...bg }) as DBBackground);
     return existing.id;
   }
-  const record: DBBackground = { ...bg, ...makeDBMeta() } as DBBackground;
+  const record: DBBackground = { ...makeDBMeta(), ...bg } as DBBackground;
   await db.backgrounds.add(record);
   return record.id;
 }
@@ -192,7 +192,7 @@ export async function upsertSubclass(sc: InsertPayload<DBSubclass> & { id?: stri
     await db.subclasses.put(markDirty<DBSubclass>({ ...existing, ...sc }) as DBSubclass);
     return existing.id;
   }
-  const record: DBSubclass = { ...sc, ...makeDBMeta() } as DBSubclass;
+  const record: DBSubclass = { ...makeDBMeta(), ...sc } as DBSubclass;
   await db.subclasses.add(record);
   return record.id;
 }
@@ -223,7 +223,7 @@ export async function upsertFeature(feat: InsertPayload<DBFeature> & { id?: stri
     await db.features.put(markDirty<DBFeature>({ ...existing, ...feat }) as DBFeature);
     return existing.id;
   }
-  const record: DBFeature = { ...feat, ...makeDBMeta() } as DBFeature;
+  const record: DBFeature = { ...makeDBMeta(), ...feat } as DBFeature;
   await db.features.add(record);
   return record.id;
 }

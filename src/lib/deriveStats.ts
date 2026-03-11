@@ -99,7 +99,7 @@ export function deriveStats(character: Character, gameData: GameData): DerivedSt
       // Also resolve DB feature refs
       for (const ref of (levelEntry.featureRefs ?? [])) {
         const dbFeat = gameData.features?.find(f => f.id === ref);
-        if (dbFeat) {
+        if (dbFeat && !allFeatures.some(x => x.id === dbFeat.id)) {
           allFeatures.push(dbFeat);
           allModifiers.push(...(dbFeat.modifiers ?? []));
         }

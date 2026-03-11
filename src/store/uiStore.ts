@@ -19,7 +19,7 @@ interface UIStore {
   view: AppView;
   activeCharacterId: string | null;
   sheetTab: SheetTab;
-  databaseSection: 'items' | 'spells' | 'classes' | 'subclasses' | 'feats' | 'species' | 'backgrounds' | 'features' | 'properties';
+  databaseSection: 'items' | 'spells' | 'classes' | 'subclasses' | 'feats' | 'species' | 'backgrounds' | 'features' | 'properties' | 'library';
   modalStack: string[];
 
   setView: (view: AppView) => void;
