@@ -1,4 +1,3 @@
-import { ELEMENTAL_SHAPER_ID } from './elementalShaper';
 /**
  * Elemental Path features — Water, Earth, Fire, Air
  *
@@ -9,6 +8,9 @@ import { ELEMENTAL_SHAPER_ID } from './elementalShaper';
  */
 
 import type { Feature } from '@/types/game';
+
+/** Matches ELEMENTAL_SHAPER_ID in elementalShaper.ts — kept inline to avoid circular imports */
+const ELEMENTAL_SHAPER_ID = 'elemental-shaper';
 
 // ═══════════════════════════════════════════════════════════════
 // WATER PATH
