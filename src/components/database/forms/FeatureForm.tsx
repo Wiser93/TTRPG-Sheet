@@ -469,6 +469,43 @@ function FormulaBuilder({ terms, onChange }: {
   );
 }
 
+// ── Card option text override row (stable identity to avoid keyboard close) ──
+
+function CardOptionTextRow({ pathId, pathName, value, onChange, onRemove }: {
+  pathId: string;
+  pathName: string;
+  value: string;
+  onChange: (val: string) => void;
+  onRemove: () => void;
+}) {
+  const [local, setLocal] = React.useState(value);
+  // Sync if parent resets
+  React.useEffect(() => { setLocal(value); }, [value]);
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr auto', gap: 6, marginBottom: 6, alignItems: 'center' }}>
+      <div style={{
+        fontSize: 11, fontWeight: 700, color: 'var(--accent)',
+        background: 'color-mix(in srgb, var(--accent) 10%, var(--bg-1))',
+        borderRadius: 4, padding: '3px 8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      }} title={pathId}>
+        {pathName.replace(' Path', '')}
+      </div>
+      <input
+        value={local}
+        onChange={e => setLocal(e.target.value)}
+        onBlur={() => { if (local !== value) onChange(local); }}
+        placeholder="Custom description when this element is active…"
+        style={{ fontSize: 12 }}
+      />
+      <button
+        type="button"
+        onClick={onRemove}
+        style={{ color: 'var(--accent-2)', fontSize: 16, padding: '0 6px', lineHeight: 1 }}
+      >×</button>
+    </div>
+  );
+}
+
 // ── Card Section ─────────────────────────────────────────────
 
 type CardState = { id: string; label: string; description?: string; color?: string; icon?: string };
@@ -570,8 +607,11 @@ function CardSection({ f, patch }: {
 
             {/* Path-based: shows whatever tiered features the character has unlocked */}
             {sourceMode === 'path' && (() => {
+              const allFeatures = useFeatures() ?? [];
+              const pathFeatures = allFeatures.filter(f2 => f2.isPath);
               const texts = f.cardOptionTexts ?? {};
-              const entries = Object.entries(texts);
+              const usedIds = Object.keys(texts);
+              const availableToAdd = pathFeatures.filter(pf => !usedIds.includes(pf.id));
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <p style={{ fontSize: 11, color: 'var(--text-2)', background: 'var(--bg-2)', borderRadius: 5, padding: '6px 10px' }}>
@@ -583,49 +623,49 @@ function CardSection({ f, patch }: {
                       Option Description Overrides
                     </p>
                     <p style={{ fontSize: 11, color: 'var(--text-2)', marginBottom: 8 }}>
-                      Per-option text shown when that state is active on the card. Key is the path feature ID.
-                      Falls back to the path feature's own description if not set.
+                      Custom description shown when that element is active. Falls back to the path feature description if not set.
                     </p>
-                    {entries.map(([key, val]) => (
-                      <div key={key} style={{ display: 'grid', gridTemplateColumns: '1fr 2fr auto', gap: 6, marginBottom: 6, alignItems: 'center' }}>
-                        <input
-                          value={key}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                    {usedIds.map(pathId => {
+                      const pathFeat = pathFeatures.find(pf => pf.id === pathId);
+                      return (
+                        <CardOptionTextRow
+                          key={pathId}
+                          pathId={pathId}
+                          pathName={pathFeat?.name ?? pathId}
+                          value={texts[pathId]}
+                          onChange={val => (patch as (c: object) => void)({ cardOptionTexts: { ...texts, [pathId]: val } })}
+                          onRemove={() => {
                             const next = { ...texts };
-                            delete next[key];
-                            next[e.target.value] = val;
+                            delete next[pathId];
                             (patch as (c: object) => void)({ cardOptionTexts: next });
                           }}
-                          placeholder="Option ID (e.g. path-water)"
-                          style={{ fontSize: 12 }}
                         />
-                        <input
-                          value={val}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                            (patch as (c: object) => void)({ cardOptionTexts: { ...texts, [key]: e.target.value } });
+                      );
+                    })}
+                    {/* Add new override — only show path features not yet added */}
+                    {availableToAdd.length > 0 && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                        <select
+                          defaultValue=""
+                          onChange={e => {
+                            if (!e.target.value) return;
+                            (patch as (c: object) => void)({ cardOptionTexts: { ...texts, [e.target.value]: '' } });
+                            e.target.value = '';
                           }}
-                          placeholder="Description text…"
-                          style={{ fontSize: 12 }}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const next = { ...texts };
-                            delete next[key];
-                            (patch as (c: object) => void)({ cardOptionTexts: next });
-                          }}
-                          style={{ color: 'var(--accent-2)', fontSize: 16, padding: '0 6px', lineHeight: 1 }}
-                        >×</button>
+                          style={{ fontSize: 12, flex: 1 }}
+                        >
+                          <option value="">+ Add override for a path…</option>
+                          {availableToAdd.map(pf => (
+                            <option key={pf.id} value={pf.id}>{pf.name}</option>
+                          ))}
+                        </select>
                       </div>
-                    ))}
-                    <button
-                      type="button"
-                      className="btn btn-ghost"
-                      style={{ fontSize: 12 }}
-                      onClick={() => (patch as (c: object) => void)({ cardOptionTexts: { ...texts, '': '' } })}
-                    >
-                      + Add override
-                    </button>
+                    )}
+                    {pathFeatures.length === 0 && (
+                      <p style={{ fontSize: 11, color: 'var(--text-2)', fontStyle: 'italic' }}>
+                        No path features in DB yet — create some in the Features tab with "This feature is a tiered path" enabled.
+                      </p>
+                    )}
                   </div>
                 </div>
               );

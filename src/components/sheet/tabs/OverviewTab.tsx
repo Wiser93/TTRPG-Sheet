@@ -65,9 +65,12 @@ function sign(n: number) { return n >= 0 ? `+${n}` : `${n}`; }
 interface Props { character: Character; derived: DerivedStats; }
 
 export function OverviewTab({ character, derived }: Props) {
-  const { setCurrentHP, shortRest, longRest, setFeatureCardState, setInspiration, setSkillAbility } = useCharacterStore();
+  const { setCurrentHP, setTempHP, applyDelta, shortRest, longRest, setFeatureCardState, setInspiration, setSkillAbility } = useCharacterStore();
   // Local HP string — allows empty while editing, validated on blur
   const [hpStr, setHpStr] = useState<string | null>(null);
+  const [tempStr, setTempStr] = useState<string | null>(null);
+  // Delta input for damage/heal
+  const [deltaStr, setDeltaStr] = useState('');
   const [restReminder, setRestReminder] = useState<{ type: 'short' | 'long'; features: Feature[] } | null>(null);
   const [shortRestOpen, setShortRestOpen] = useState(false);
   // diceRolls: per-class entries { classId, value } so we can undo per class
@@ -167,46 +170,68 @@ export function OverviewTab({ character, derived }: Props) {
 
       {/* HP bar + rest buttons */}
       <div className="card">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
           <p className="label">Hit Points</p>
           <div style={{ display: 'flex', gap: 6 }}>
-            <button
-              className="btn btn-ghost"
-              style={{ fontSize: 11, padding: '3px 10px' }}
-              onClick={handleShortRest}
-            >
+            <button className="btn btn-ghost" style={{ fontSize: 11, padding: '3px 10px' }} onClick={handleShortRest}>
               Short Rest
             </button>
-            <button
-              className="btn btn-ghost"
-              style={{ fontSize: 11, padding: '3px 10px' }}
-              onClick={handleLongRest}
-            >
+            <button className="btn btn-ghost" style={{ fontSize: 11, padding: '3px 10px' }} onClick={handleLongRest}>
               Long Rest
             </button>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-          <input
-            type="number"
-            value={hpStr ?? character.health.current}
-            onChange={e => setHpStr(e.target.value)}
-            onBlur={() => {
-              const parsed = parseInt(hpStr ?? '', 10);
-              setCurrentHP(isNaN(parsed) ? character.health.current : Math.max(0, parsed));
-              setHpStr(null);
-            }}
-            style={{ width: 70, textAlign: 'center', fontSize: 22, fontWeight: 700 }}
-          />
-          <span style={{ color: 'var(--text-2)', fontSize: 18 }}>/</span>
-          <span style={{ fontSize: 22, fontWeight: 700 }}>{derived.maxHP}</span>
-          {character.health.temp > 0 && (
-            <span style={{ fontSize: 13, color: 'var(--accent-3)', marginLeft: 8 }}>
-              +{character.health.temp} temp
-            </span>
-          )}
+
+        {/* Current HP row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+          {/* Current / Max */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
+            <input
+              type="number"
+              value={hpStr ?? character.health.current}
+              onChange={e => setHpStr(e.target.value)}
+              onBlur={() => {
+                const parsed = parseInt(hpStr ?? '', 10);
+                setCurrentHP(isNaN(parsed) ? character.health.current : Math.max(0, parsed));
+                setHpStr(null);
+              }}
+              style={{ width: 62, textAlign: 'center', fontSize: 22, fontWeight: 700 }}
+            />
+            <span style={{ color: 'var(--text-2)', fontSize: 18 }}>/</span>
+            <span style={{ fontSize: 22, fontWeight: 700 }}>{derived.maxHP}</span>
+          </div>
+
+          {/* Temp HP */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Temp</span>
+            <input
+              type="number"
+              min={0}
+              value={tempStr ?? character.health.temp}
+              onChange={e => setTempStr(e.target.value)}
+              onBlur={() => {
+                const parsed = parseInt(tempStr ?? '', 10);
+                setTempHP(isNaN(parsed) ? 0 : Math.max(0, parsed));
+                setTempStr(null);
+              }}
+              style={{ width: 52, textAlign: 'center', fontSize: 16, fontWeight: 700,
+                color: character.health.temp > 0 ? 'var(--accent-3, #e5c07b)' : 'var(--text-2)',
+                borderColor: character.health.temp > 0 ? 'var(--accent-3, #e5c07b)' : undefined,
+              }}
+            />
+          </div>
         </div>
-        <div style={{ background: 'var(--bg-2)', borderRadius: 4, height: 8, overflow: 'hidden' }}>
+
+        {/* HP bar */}
+        <div style={{ background: 'var(--bg-2)', borderRadius: 4, height: 8, overflow: 'hidden', marginBottom: 12, position: 'relative' }}>
+          {/* Temp HP overlay */}
+          {character.health.temp > 0 && (
+            <div style={{
+              position: 'absolute', right: 0, top: 0, height: '100%',
+              width: `${Math.min(100, (character.health.temp / derived.maxHP) * 100)}%`,
+              background: 'var(--accent-3, #e5c07b)', opacity: 0.5,
+            }} />
+          )}
           <div style={{
             background: character.health.current > derived.maxHP * 0.5
               ? 'var(--accent-4)'
@@ -217,6 +242,44 @@ export function OverviewTab({ character, derived }: Props) {
             width: `${Math.max(0, Math.min(100, (character.health.current / derived.maxHP) * 100))}%`,
             transition: 'width 0.3s ease, background 0.3s ease',
           }} />
+        </div>
+
+        {/* Damage / Heal controls */}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <input
+            type="number"
+            min={1}
+            value={deltaStr}
+            onChange={e => setDeltaStr(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                const n = parseInt(deltaStr, 10);
+                if (!isNaN(n) && n > 0) { applyDelta(-n, derived.maxHP); setDeltaStr(''); }
+              }
+            }}
+            placeholder="Amount"
+            style={{ flex: 1, textAlign: 'center', fontSize: 16, fontWeight: 600 }}
+          />
+          <button
+            className="btn btn-ghost"
+            style={{ flex: 1, fontSize: 13, padding: '8px 0', color: 'var(--accent-2)', fontWeight: 700, border: '1px solid var(--accent-2)' }}
+            onClick={() => {
+              const n = parseInt(deltaStr, 10);
+              if (!isNaN(n) && n > 0) { applyDelta(-n, derived.maxHP); setDeltaStr(''); }
+            }}
+          >
+            − Damage
+          </button>
+          <button
+            className="btn btn-ghost"
+            style={{ flex: 1, fontSize: 13, padding: '8px 0', color: 'var(--accent-4)', fontWeight: 700, border: '1px solid var(--accent-4)' }}
+            onClick={() => {
+              const n = parseInt(deltaStr, 10);
+              if (!isNaN(n) && n > 0) { applyDelta(n, derived.maxHP); setDeltaStr(''); }
+            }}
+          >
+            + Heal
+          </button>
         </div>
       </div>
 

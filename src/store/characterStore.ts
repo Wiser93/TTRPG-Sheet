@@ -24,6 +24,8 @@ interface CharacterStore {
   setCurrentHP: (hp: number) => void;
   setTempHP: (hp: number) => void;
   setMaxHPOverride: (hp: number | undefined) => void;
+  /** Positive = heal, negative = damage. Damage absorbs temp HP first; healing never restores temp HP. */
+  applyDelta: (delta: number, maxHP: number) => void;
   addDeathSave: (type: 'success' | 'failure') => void;
   resetDeathSaves: () => void;
 
@@ -171,6 +173,18 @@ export const useCharacterStore = create<CharacterStore>()(
     setCurrentHP: (hp) => mutate(set, get, c => { c.health.current = Math.max(0, hp); }),
     setTempHP: (hp) => mutate(set, get, c => { c.health.temp = Math.max(0, hp); }),
     setMaxHPOverride: (hp) => mutate(set, get, c => { c.health.maxOverride = hp; }),
+    applyDelta: (delta, maxHP) => mutate(set, get, c => {
+      if (delta < 0) {
+        // Damage: absorb from temp HP first, then real HP
+        const dmg = -delta;
+        const tempAbsorbed = Math.min(c.health.temp, dmg);
+        c.health.temp = Math.max(0, c.health.temp - tempAbsorbed);
+        c.health.current = Math.max(0, c.health.current - (dmg - tempAbsorbed));
+      } else {
+        // Healing: only affects real HP, never temp HP
+        c.health.current = Math.min(maxHP, c.health.current + delta);
+      }
+    }),
     addDeathSave: (type) => mutate(set, get, c => {
       if (type === 'success') c.health.deathSaves.successes = Math.min(3, c.health.deathSaves.successes + 1);
       else c.health.deathSaves.failures = Math.min(3, c.health.deathSaves.failures + 1);
