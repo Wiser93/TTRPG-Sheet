@@ -5,6 +5,9 @@ import { useFeatureCardOptions } from '@/hooks/useFeatureCardOptions';
 import type { Character, DerivedStats } from '@/types/character';
 import type { StatKey, SkillKey, Feature } from '@/types/game';
 
+
+
+
 const STAT_LABELS: Record<StatKey, string> = {
   strength:     'STR',
   dexterity:    'DEX',
@@ -13,6 +16,7 @@ const STAT_LABELS: Record<StatKey, string> = {
   wisdom:       'WIS',
   charisma:     'CHA',
 };
+
 
 const SKILL_LABELS: Record<SkillKey, string> = {
   acrobatics:    'Acrobatics',
@@ -61,7 +65,7 @@ function sign(n: number) { return n >= 0 ? `+${n}` : `${n}`; }
 interface Props { character: Character; derived: DerivedStats; }
 
 export function OverviewTab({ character, derived }: Props) {
-  const { setCurrentHP, shortRest, longRest, setFeatureCardState, setInspiration } = useCharacterStore();
+  const { setCurrentHP, shortRest, longRest, setFeatureCardState, setInspiration, setSkillAbility } = useCharacterStore();
   // Local HP string — allows empty while editing, validated on blur
   const [hpStr, setHpStr] = useState<string | null>(null);
   const [restReminder, setRestReminder] = useState<{ type: 'short' | 'long'; features: Feature[] } | null>(null);
@@ -316,25 +320,20 @@ export function OverviewTab({ character, derived }: Props) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           {(Object.keys(SKILL_LABELS) as SkillKey[]).map(skill => {
             const s = derived.skills[skill];
+            const defaultAbility = SKILL_ABILITY[skill];
+            const activeAbility = character.skills[skill]?.abilityOverride ?? defaultAbility;
+            const isOverridden = activeAbility !== defaultAbility;
             return (
-              <div key={skill} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-                <span style={{
-                  fontSize: 10, fontWeight: 700, color: 'var(--text-2)',
-                  width: 28, flexShrink: 0, textAlign: 'right',
-                }}>
-                  {SKILL_ABILITY[skill]}
-                </span>
-                <span style={{
-                  width: 10, height: 10, borderRadius: s.expert ? 2 : '50%',
-                  background: s.proficient ? 'var(--accent-4)' : 'var(--bg-3)',
-                  border: '1px solid var(--border)',
-                  flexShrink: 0,
-                }} />
-                <span style={{ flex: 1, color: s.proficient ? 'var(--text-0)' : 'var(--text-2)' }}>
-                  {SKILL_LABELS[skill]}
-                </span>
-                <span style={{ fontWeight: 600 }}>{sign(s.bonus)}</span>
-              </div>
+              <SkillRow
+                key={skill}
+                skill={skill}
+                label={SKILL_LABELS[skill]}
+                defaultAbility={defaultAbility}
+                activeAbility={activeAbility}
+                isOverridden={isOverridden}
+                derived={s}
+                onAbilityChange={ability => setSkillAbility(skill, ability === defaultAbility ? undefined : ability as import('@/types/game').StatKey)}
+              />
             );
           })}
         </div>
@@ -641,6 +640,97 @@ export function OverviewTab({ character, derived }: Props) {
         </div>
       </div>
 
+    </div>
+  );
+}
+
+function SkillRow({ skill: _skill, label, defaultAbility, activeAbility, isOverridden, derived, onAbilityChange }: {
+  skill: SkillKey;
+  label: string;
+  defaultAbility: string;
+  activeAbility: string;
+  isOverridden: boolean;
+  derived: { bonus: number; proficient: boolean; expert: boolean };
+  onAbilityChange: (ability: string) => void;
+}) {
+  const [abilityOpen, setAbilityOpen] = useState(false);
+  const ALL_ABILITIES = ['STR','DEX','CON','INT','WIS','CHA'];
+  const ABILITY_KEYS: Record<string,string> = { STR:'strength',DEX:'dexterity',CON:'constitution',INT:'intelligence',WIS:'wisdom',CHA:'charisma' };
+  const KEYS_TO_SHORT: Record<string,string> = { strength:'STR',dexterity:'DEX',constitution:'CON',intelligence:'INT',wisdom:'WIS',charisma:'CHA' };
+
+  const shortActive = KEYS_TO_SHORT[activeAbility] ?? activeAbility.slice(0,3).toUpperCase();
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, gap: 0 }}>
+      {/* Ability button — click to open dropdown */}
+      <span style={{ position: 'relative', flexShrink: 0 }}>
+        <button
+          onClick={() => setAbilityOpen(o => !o)}
+          title="Click to change ability"
+          style={{
+            fontSize: 10, fontWeight: 700,
+            color: isOverridden ? 'var(--accent)' : 'var(--text-2)',
+            width: 36, textAlign: 'right', paddingRight: 0,
+            textDecoration: isOverridden ? 'underline dotted' : undefined,
+          }}
+        >
+          {shortActive}
+        </button>
+        {abilityOpen && (
+          <div style={{
+            position: 'absolute', left: 0, top: '100%', zIndex: 100,
+            background: 'var(--bg-0)', border: '1px solid var(--border)',
+            borderRadius: 8, padding: 6, minWidth: 120,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+          }}
+            onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setAbilityOpen(false); }}
+          >
+            <p style={{ fontSize: 10, color: 'var(--text-2)', padding: '2px 6px 6px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              Override ability
+            </p>
+            {ALL_ABILITIES.map(ab => {
+              const abKey = ABILITY_KEYS[ab];
+              const isDefault = ab === defaultAbility;
+              const isActive = ab === shortActive;
+              return (
+                <button
+                  key={ab}
+                  onClick={() => { onAbilityChange(abKey); setAbilityOpen(false); }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    width: '100%', textAlign: 'left', padding: '5px 8px',
+                    borderRadius: 5, fontSize: 12,
+                    background: isActive ? 'color-mix(in srgb, var(--accent) 15%, var(--bg-2))' : 'transparent',
+                    color: isActive ? 'var(--accent)' : 'var(--text-1)',
+                    fontWeight: isActive ? 700 : 400,
+                  }}
+                >
+                  <span style={{ width: 28, fontWeight: 700 }}>{ab}</span>
+                  {isDefault && (
+                    <span style={{ fontSize: 10, color: 'var(--text-2)' }}>default</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </span>
+
+      {/* Proficiency dot */}
+      <span style={{
+        width: 10, height: 10, borderRadius: derived.expert ? 2 : '50%',
+        background: derived.proficient ? 'var(--accent-4)' : 'var(--bg-3)',
+        border: '1px solid var(--border)',
+        flexShrink: 0, margin: '0 14px 0 16px',
+      }} />
+
+      {/* Skill name */}
+      <span style={{ flex: 1, color: derived.proficient ? 'var(--text-0)' : 'var(--text-2)' }}>
+        {label}
+      </span>
+
+      {/* Modifier */}
+      <span style={{ fontWeight: 600, minWidth: 24, textAlign: 'right' }}>{sign(derived.bonus)}</span>
     </div>
   );
 }

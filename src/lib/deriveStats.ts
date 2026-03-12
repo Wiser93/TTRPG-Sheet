@@ -419,7 +419,8 @@ export function deriveStats(character: Character, gameData: GameData): DerivedSt
   const skills = Object.fromEntries(
     (Object.keys(SKILL_STAT) as SkillKey[]).map(skill => {
       const state = character.skills[skill];
-      const base = statMods[SKILL_STAT[skill]];
+      const statKey = state.abilityOverride ?? SKILL_STAT[skill];
+      const base = statMods[statKey];
       // Proficient if stored on character OR granted by background/species
       const isProficient = state.proficient || bgSkillProfs.has(skill) || speciesSkillProfs.has(skill) || extraSkillProfs.includes(skill);
       const profMult = state.expertise ? 2 : isProficient ? 1 : 0;

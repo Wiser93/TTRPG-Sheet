@@ -16,6 +16,7 @@ function defaultWeapon(existing?: Item['weaponStats']): WeaponStats {
     damageType: existing?.damageType ?? 'slashing',
     properties: existing?.properties ?? [],
     attackBonus: existing?.attackBonus ?? 0,
+    secondaryDamage: existing?.secondaryDamage,
   };
 }
 function defaultShield(existing?: Item['shieldStats']): ShieldStats {
@@ -233,6 +234,44 @@ export function ItemForm({ initial, onSave, onCancel, isSaving }: ItemFormProps)
               options={DAMAGE_TYPES.map(d => ({ value: d, label: d }))} />
             <LabeledInput label="Attack Bonus (additional)" type="number" value={weapon.attackBonus ?? 0}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => patch({ weaponStats: { ...weapon, attackBonus: Number(e.target.value) } })} />
+
+            {/* Secondary damage (versatile / alternate form) */}
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-2)' }}>
+                  Secondary Damage
+                  <span style={{ fontWeight: 400, textTransform: 'none', marginLeft: 6 }}>— optional, shown in the 5th column (e.g. versatile two-hand)</span>
+                </p>
+                {weapon.secondaryDamage ? (
+                  <button type="button" className="btn btn-ghost" style={{ fontSize: 11, color: 'var(--accent-2)' }}
+                    onClick={() => patch({ weaponStats: { ...weapon, secondaryDamage: undefined } })}>
+                    Remove
+                  </button>
+                ) : (
+                  <button type="button" className="btn btn-ghost" style={{ fontSize: 11 }}
+                    onClick={() => patch({ weaponStats: { ...weapon, secondaryDamage: { roll: { diceCount: 1, dieSize: 8, modifier: 0 }, type: weapon.damageType } } })}>
+                    + Add secondary damage
+                  </button>
+                )}
+              </div>
+              {weapon.secondaryDamage && (
+                <FormRow cols={4}>
+                  <LabeledInput label="Dice Count" type="number" min={1}
+                    value={weapon.secondaryDamage.roll.diceCount}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => patch({ weaponStats: { ...weapon, secondaryDamage: { ...weapon.secondaryDamage!, roll: { ...weapon.secondaryDamage!.roll, diceCount: Number(e.target.value) } } } })} />
+                  <LabeledSelect label="Die Size" value={String(weapon.secondaryDamage.roll.dieSize)}
+                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => patch({ weaponStats: { ...weapon, secondaryDamage: { ...weapon.secondaryDamage!, roll: { ...weapon.secondaryDamage!.roll, dieSize: Number(e.target.value) as 4|6|8|10|12|20|100 } } } })}
+                    options={DIE_SIZES.map(d => ({ value: String(d), label: `d${d}` }))} />
+                  <LabeledInput label="Modifier" type="number"
+                    value={weapon.secondaryDamage.roll.modifier ?? 0}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => patch({ weaponStats: { ...weapon, secondaryDamage: { ...weapon.secondaryDamage!, roll: { ...weapon.secondaryDamage!.roll, modifier: Number(e.target.value) } } } })} />
+                  <LabeledSelect label="Damage Type" value={weapon.secondaryDamage.type}
+                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => patch({ weaponStats: { ...weapon, secondaryDamage: { ...weapon.secondaryDamage!, type: e.target.value as DamageType } } })}
+                    options={DAMAGE_TYPES.map(d => ({ value: d, label: d }))} />
+                </FormRow>
+              )}
+            </div>
+
             <PropertyChips category={cat} selected={getProps()} onChange={setProperties} allDbProps={allDbProps} />
           </div>
         </FormSection>

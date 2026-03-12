@@ -83,6 +83,7 @@ interface CharacterStore {
   setBaseStats: (stats: import('@/types/character').StatBlock) => void;
   /** Set a single base stat */
   setBaseStat: (stat: import('@/types/game').StatKey, value: number) => void;
+  setSkillAbility: (skill: import('@/types/game').SkillKey, ability: import('@/types/game').StatKey | undefined) => void;
 
   // ── Sheet Config ───────────────────────────────────────────
   patchSheetConfig: (changes: Partial<import('@/types/character').SheetConfig>) => void;
@@ -418,6 +419,11 @@ export const useCharacterStore = create<CharacterStore>()(
     // ── Sheet Config ────────────────────────────────────────
     patchSheetConfig: (changes) => mutate(set, get, c => {
       c.sheetConfig = { ...(c.sheetConfig ?? {}), ...changes };
+    }),
+
+    setSkillAbility: (skill, ability) => mutate(set, get, c => {
+      if (!c.skills[skill]) c.skills[skill] = { proficient: false, expertise: false, extraBonus: 0 };
+      c.skills[skill].abilityOverride = ability;
     }),
 
     // ── Bio / Meta ──────────────────────────────────────────

@@ -1,4 +1,20 @@
 import { useCharacterStore } from '@/store/characterStore';
+import type { SkillKey } from '@/types/game';
+
+const ALL_SKILLS: SkillKey[] = [
+  'acrobatics','animalHandling','arcana','athletics','deception','history',
+  'insight','intimidation','investigation','medicine','nature','perception',
+  'performance','persuasion','religion','sleightOfHand','stealth','survival',
+];
+const SKILL_LABEL: Record<SkillKey, string> = {
+  acrobatics:'Acrobatics', animalHandling:'Animal Handling', arcana:'Arcana',
+  athletics:'Athletics', deception:'Deception', history:'History',
+  insight:'Insight', intimidation:'Intimidation', investigation:'Investigation',
+  medicine:'Medicine', nature:'Nature', perception:'Perception',
+  performance:'Performance', persuasion:'Persuasion', religion:'Religion',
+  sleightOfHand:'Sleight of Hand', stealth:'Stealth', survival:'Survival',
+};
+const DEFAULT_PASSIVE: SkillKey[] = ['perception', 'insight', 'investigation'];
 
 function Toggle({
   label, hint, checked, onChange,
@@ -104,6 +120,47 @@ export function ConfigSection() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ── Passive Values ─────────────────────────────────── */}
+      <section>
+        <p style={{
+          fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
+          letterSpacing: '0.07em', color: 'var(--accent)', marginBottom: 4,
+        }}>
+          Passive Values Panel
+        </p>
+        <p style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 10 }}>
+          Choose which skills appear in the Passive Values panel on the Overview tab.
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {ALL_SKILLS.map(skill => {
+            const active = (config.passiveSkills ?? DEFAULT_PASSIVE).includes(skill);
+            return (
+              <label key={skill} style={{
+                display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
+                padding: '8px 12px', borderRadius: 6,
+                background: active ? 'color-mix(in srgb, var(--accent) 10%, var(--bg-2))' : 'var(--bg-2)',
+                border: `1px solid ${active ? 'color-mix(in srgb, var(--accent) 40%, var(--border))' : 'var(--border)'}`,
+                fontSize: 13,
+              }}>
+                <input
+                  type="checkbox"
+                  checked={active}
+                  style={{ accentColor: 'var(--accent)', width: 15, height: 15 }}
+                  onChange={() => {
+                    const current = config.passiveSkills ?? DEFAULT_PASSIVE;
+                    const next = active
+                      ? current.filter(s => s !== skill)
+                      : [...current, skill];
+                    patchSheetConfig({ passiveSkills: next.length ? next : undefined });
+                  }}
+                />
+                {SKILL_LABEL[skill]}
+              </label>
+            );
+          })}
         </div>
       </section>
 

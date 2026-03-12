@@ -11,6 +11,8 @@ export interface SkillState {
   expertise: boolean;
   /** Any extra flat bonus beyond prof/stat */
   extraBonus: number;
+  /** Override which ability stat this skill uses (default from SKILL_STAT map) */
+  abilityOverride?: import('./game').StatKey;
 }
 
 export type SkillBlock = Record<SkillKey, SkillState>;

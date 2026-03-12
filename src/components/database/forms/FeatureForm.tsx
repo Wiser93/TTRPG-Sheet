@@ -106,6 +106,7 @@ export function FeatureForm({ initial, onSave, isSaving }: Props) {
     cardSelectionLabel: initial?.cardSelectionLabel  ?? '',
     cardOptionSource:   initial?.cardOptionSource    ?? undefined,
     cardOptions:        (initial?.cardOptions        ?? []) as Array<{ id: string; label: string; description?: string; color?: string; icon?: string }>,
+    cardOptionTexts:    (initial?.cardOptionTexts    ?? {}) as Record<string, string>,
   });
 
   function patch(changes: Partial<Omit<Feature, 'id'>>) {
@@ -139,6 +140,9 @@ export function FeatureForm({ initial, onSave, isSaving }: Props) {
       cardSelectionLabel: f.isCard && f.cardSelectionLabel?.trim() ? f.cardSelectionLabel.trim() : undefined,
       cardOptionSource:   f.isCard ? f.cardOptionSource ?? undefined : undefined,
       cardOptions:        (f.isCard && !f.cardOptionSource && f.cardOptions?.length) ? f.cardOptions : undefined,
+      cardOptionTexts:    (f.isCard && f.cardOptionSource && Object.keys((f as {cardOptionTexts?: Record<string,string>}).cardOptionTexts ?? {}).length)
+        ? (f as {cardOptionTexts?: Record<string,string>}).cardOptionTexts
+        : undefined,
     });
   }
 
@@ -470,8 +474,8 @@ function FormulaBuilder({ terms, onChange }: {
 type CardState = { id: string; label: string; description?: string; color?: string; icon?: string };
 
 function CardSection({ f, patch }: {
-  f: Partial<Feature> & { isCard?: boolean; cardTab?: string; cardSelectionLabel?: string; cardOptionSource?: { choiceId?: string; pathBased?: boolean }; cardOptions?: CardState[] };
-  patch: (changes: Partial<Feature & { isCard: boolean; cardTab: string; cardSelectionLabel: string; cardOptionSource?: { choiceId?: string; pathBased?: boolean }; cardOptions: CardState[] }>) => void;
+  f: Partial<Feature> & { isCard?: boolean; cardTab?: string; cardSelectionLabel?: string; cardOptionSource?: { choiceId?: string; pathBased?: boolean }; cardOptions?: CardState[]; cardOptionTexts?: Record<string, string> };
+  patch: (changes: Partial<Feature & { isCard: boolean; cardTab: string; cardSelectionLabel: string; cardOptionSource?: { choiceId?: string; pathBased?: boolean }; cardOptions: CardState[]; cardOptionTexts: Record<string, string> }>) => void;
 }) {
   const [newOptId, setNewOptId] = React.useState('');
   const [newOptLabel, setNewOptLabel] = React.useState('');
@@ -565,12 +569,67 @@ function CardSection({ f, patch }: {
             </div>
 
             {/* Path-based: shows whatever tiered features the character has unlocked */}
-            {sourceMode === 'path' && (
-              <p style={{ fontSize: 11, color: 'var(--text-2)', background: 'var(--bg-2)', borderRadius: 5, padding: '6px 10px' }}>
-                Options will be the tiered feature paths the character has advanced (e.g. Water, Earth, Fire, Air).
-                Color and icon come from the path feature definitions.
-              </p>
-            )}
+            {sourceMode === 'path' && (() => {
+              const texts = f.cardOptionTexts ?? {};
+              const entries = Object.entries(texts);
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <p style={{ fontSize: 11, color: 'var(--text-2)', background: 'var(--bg-2)', borderRadius: 5, padding: '6px 10px' }}>
+                    Options will be the tiered feature paths the character has advanced (e.g. Water, Earth, Fire, Air).
+                    Color and icon come from the path feature definitions.
+                  </p>
+                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: 8 }}>
+                    <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+                      Option Description Overrides
+                    </p>
+                    <p style={{ fontSize: 11, color: 'var(--text-2)', marginBottom: 8 }}>
+                      Per-option text shown when that state is active on the card. Key is the path feature ID.
+                      Falls back to the path feature's own description if not set.
+                    </p>
+                    {entries.map(([key, val]) => (
+                      <div key={key} style={{ display: 'grid', gridTemplateColumns: '1fr 2fr auto', gap: 6, marginBottom: 6, alignItems: 'center' }}>
+                        <input
+                          value={key}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                            const next = { ...texts };
+                            delete next[key];
+                            next[e.target.value] = val;
+                            (patch as (c: object) => void)({ cardOptionTexts: next });
+                          }}
+                          placeholder="Option ID (e.g. path-water)"
+                          style={{ fontSize: 12 }}
+                        />
+                        <input
+                          value={val}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                            (patch as (c: object) => void)({ cardOptionTexts: { ...texts, [key]: e.target.value } });
+                          }}
+                          placeholder="Description text…"
+                          style={{ fontSize: 12 }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = { ...texts };
+                            delete next[key];
+                            (patch as (c: object) => void)({ cardOptionTexts: next });
+                          }}
+                          style={{ color: 'var(--accent-2)', fontSize: 16, padding: '0 6px', lineHeight: 1 }}
+                        >×</button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      style={{ fontSize: 12 }}
+                      onClick={() => (patch as (c: object) => void)({ cardOptionTexts: { ...texts, '': '' } })}
+                    >
+                      + Add override
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* From choice ID */}
             {sourceMode === 'choice' && (
