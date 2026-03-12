@@ -236,6 +236,11 @@ export interface SheetConfig {
   hideSpellsTab?: boolean;
   /** Show stat modifiers as the primary large number (default: false = show score) */
   showModsAsPrimary?: boolean;
+  /**
+   * Skills shown in the Passive Values panel on the Overview tab.
+   * Defaults to ['perception', 'insight', 'investigation'].
+   */
+  passiveSkills?: import('@/types/game').SkillKey[];
 }
 
 export interface Character {

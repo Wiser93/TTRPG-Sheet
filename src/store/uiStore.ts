@@ -21,6 +21,8 @@ interface UIStore {
   sheetTab: SheetTab;
   databaseSection: 'items' | 'spells' | 'classes' | 'subclasses' | 'feats' | 'species' | 'backgrounds' | 'features' | 'properties' | 'library';
   modalStack: string[];
+  /** Feature IDs currently expanded on the sheet — persists across tab switches */
+  expandedFeatureIds: Set<string>;
 
   setView: (view: AppView) => void;
   openCharacter: (id: string) => void;
@@ -31,6 +33,7 @@ interface UIStore {
   pushModal: (id: string) => void;
   popModal: () => void;
   clearModals: () => void;
+  toggleFeatureExpanded: (id: string) => void;
 }
 
 export const useUIStore = create<UIStore>()(set => ({
@@ -39,6 +42,7 @@ export const useUIStore = create<UIStore>()(set => ({
   sheetTab: 'overview',
   databaseSection: 'items',
   modalStack: [],
+  expandedFeatureIds: new Set<string>(),
 
   setView: (view) => set({ view }),
   openCharacter: (id) => set({ activeCharacterId: id, view: 'sheet', sheetTab: 'overview' }),
@@ -49,4 +53,9 @@ export const useUIStore = create<UIStore>()(set => ({
   pushModal: (id) => set(s => ({ modalStack: [...s.modalStack, id] })),
   popModal: () => set(s => ({ modalStack: s.modalStack.slice(0, -1) })),
   clearModals: () => set({ modalStack: [] }),
+  toggleFeatureExpanded: (id) => set(s => {
+    const next = new Set(s.expandedFeatureIds);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return { expandedFeatureIds: next };
+  }),
 }));

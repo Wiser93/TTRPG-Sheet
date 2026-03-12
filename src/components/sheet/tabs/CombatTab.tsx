@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useUIStore } from '@/store/uiStore';
 import { useCharacterStore } from '@/store/characterStore';
 import { useFeatureCardOptions } from '@/hooks/useFeatureCardOptions';
 import { useItems, useItemProperties } from '@/hooks/useGameDatabase';
@@ -26,15 +27,7 @@ export function CombatTab({ character, derived }: Props) {
     addCondition, removeCondition,
     setFeatureCardState,
   } = useCharacterStore();
-  // Persist feature expand state for the session
-  const [expandedFeatures, setExpandedFeatures] = useState<Set<string>>(new Set());
-  function toggleFeature(id: string) {
-    setExpandedFeatures(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  }
+  const { expandedFeatureIds, toggleFeatureExpanded } = useUIStore();
 
   // Resources split by combatResource flag
   const combatResources = derived.allResources.filter(r => {
@@ -98,7 +91,7 @@ export function CombatTab({ character, derived }: Props) {
               <p className="label">{group.label}</p>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {features.map(f => <ActionCard key={f.id} feature={f} accentColor={group.color} expanded={expandedFeatures.has(f.id)} onToggle={() => toggleFeature(f.id)} />)}
+              {features.map(f => <ActionCard key={f.id} feature={f} accentColor={group.color} expanded={expandedFeatureIds.has(f.id)} onToggle={() => toggleFeatureExpanded(f.id)} />)}
             </div>
           </div>
         );
@@ -153,7 +146,12 @@ function EcPanel({ resource, derivedMax }: { resource: ResourceState; derivedMax
     <div className="card" style={{ border: '2px solid var(--accent)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
         <p className="label">⚡ {resource.name}</p>
-        <span style={{ fontSize: 12, color: 'var(--text-2)' }}>{resource.rechargeOn.replace(/_/g, ' ')}</span>
+        <span style={{ fontSize: 12, color: 'var(--text-2)' }}>
+          {resource.rechargeOn === 'long_rest' ? 'Resets on long rest'
+            : resource.rechargeOn === 'short_rest' ? 'Resets on short rest'
+            : resource.rechargeOn === 'dawn' ? 'Resets at dawn'
+            : 'Does not reset'}
+        </span>
       </div>
 
       {/* Big numeric counter */}
@@ -378,19 +376,21 @@ function PropertyBadge({ name, properties, isProficient }: {
 }) {
   const [open, setOpen] = useState(false);
   const def = properties.find(p => p.name.toLowerCase() === name.toLowerCase());
-  // Mastery properties only show when proficient
   if (def?.isMastery && !isProficient) return null;
-  // (Category filtering happens before calling this — badge only renders for matching properties)
   const hasTip = !!def;
   return (
-    <span style={{ position: 'relative', display: 'inline-block' }}>
+    <span
+      style={{ position: 'relative', display: 'inline-block' }}
+      tabIndex={-1}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) setOpen(false);
+      }}
+    >
       <button
         onClick={() => hasTip && setOpen(o => !o)}
         style={{
           fontSize: 11, padding: '1px 6px', borderRadius: 10,
-          background: def?.isMastery
-            ? 'color-mix(in srgb,var(--accent) 18%,var(--bg-3))'
-            : 'var(--bg-3)',
+          background: def?.isMastery ? 'color-mix(in srgb,var(--accent) 18%,var(--bg-3))' : 'var(--bg-3)',
           border: `1px solid ${def?.isMastery ? 'var(--accent)' : 'var(--border)'}`,
           color: def?.isMastery ? 'var(--accent)' : 'var(--text-2)',
           fontWeight: def?.isMastery ? 700 : 400,
@@ -412,7 +412,7 @@ function PropertyBadge({ name, properties, isProficient }: {
             {def.name}{def.isMastery ? ' (Mastery)' : ''}
           </div>
           <div style={{ color: 'var(--text-2)' }}>{def.description}</div>
-          <button onClick={() => setOpen(false)}
+          <button onClick={() => setOpen(false)} tabIndex={0}
             style={{ position: 'absolute', top: 6, right: 8, fontSize: 14, color: 'var(--text-2)' }}>×</button>
         </div>
       )}
@@ -426,9 +426,11 @@ function AttacksPanel({ character, derived }: { character: Character; derived: D
   const allItems = useItems() ?? [];
   const allProperties = useItemProperties() ?? [];
 
-  // Find all equipped weapons
+  // Find all equipped weapons, mainHand always before offHand
+  const SLOT_ORDER: Record<string, number> = { mainHand: 0, twoHand: 1, offHand: 2 };
   const equippedWeapons = (Object.entries(character.equipped) as [string, string][])
     .filter(([slot]) => ['mainHand','offHand','twoHand'].includes(slot))
+    .sort(([a], [b]) => (SLOT_ORDER[a] ?? 9) - (SLOT_ORDER[b] ?? 9))
     .map(([slot, entryId]) => {
       const entry = character.inventory.find(i => i.id === entryId);
       if (!entry) return null;
@@ -444,12 +446,8 @@ function AttacksPanel({ character, derived }: { character: Character; derived: D
   const dexMod = derived.statMods.dexterity;
   const prof   = derived.proficiencyBonus;
 
-  // Check weapon proficiency: derived.extraWeaponProfs contains proficiency strings
   function isWeaponProficient(_ws: NonNullable<import('@/types/game').Item['weaponStats']>, itemCategory: string): boolean {
-    const profs = [
-      ...character.proficiencies.weapons,
-      ...derived.extraWeaponProfs,
-    ].map(p => p.toLowerCase());
+    const profs = [...character.proficiencies.weapons, ...derived.extraWeaponProfs].map(p => p.toLowerCase());
     const cat = itemCategory.toLowerCase();
     return profs.some(p => p === cat || p === 'all weapons' || p === 'simple weapons' || p === 'martial weapons');
   }
@@ -466,20 +464,35 @@ function AttacksPanel({ character, derived }: { character: Character; derived: D
           const proficient = isWeaponProficient(ws, item.category);
           const isFinesse = ws.properties.includes('finesse');
           const atkMod = (isFinesse ? Math.max(strMod, dexMod) : strMod) + (proficient ? prof : 0) + (ws.attackBonus ?? 0);
-          const dmgMod = isFinesse ? Math.max(strMod, dexMod) : strMod;
-          const totalDmgMod = dmgMod + (ws.damage.modifier ?? 0);
+          const dmgMod = (isFinesse ? Math.max(strMod, dexMod) : strMod) + (ws.damage.modifier ?? 0);
           const displayName = (entry as { customName?: string }).customName ?? item.name;
-          const slotLabel = slot === 'mainHand' ? 'Main' : slot === 'offHand' ? 'Off' : '2H';
+
+          const slotLabel = slot === 'mainHand' ? 'Main-hand' : slot === 'offHand' ? 'Off-hand' : '2H';
+
+          // Derive weapon type
+          const isRanged = !!ws.range || ws.properties.includes('ammunition');
+          const weaponType = isRanged ? 'Ranged' : 'Melee';
+
+          // Derive range/reach display
+          const hasReach = ws.properties.includes('reach');
+          let rangeLabel = '5 ft';
+          if (isRanged && ws.range) rangeLabel = `${ws.range.normal}/${ws.range.long} ft`;
+          else if (hasReach) rangeLabel = '10 ft';
+
+          const filteredProps = allProperties.filter(ap => {
+            const cats = ap.applicableCategories;
+            return !cats || cats === 'all' || (Array.isArray(cats) && cats.includes(item.category));
+          });
 
           return (
             <div key={entry.id} style={{
-              padding:'10px 12px',
-              background:'var(--bg-2)', borderRadius:6, border:'1px solid var(--border)',
-              borderLeft:`3px solid ${proficient ? '#e06c75' : 'var(--border)'}`,
+              padding: '10px 12px',
+              background: 'var(--bg-2)', borderRadius: 6, border: '1px solid var(--border)',
+              borderLeft: `3px solid ${proficient ? '#e06c75' : 'var(--border)'}`,
               opacity: proficient ? 1 : 0.75,
             }}>
-              {/* Top row: name + proficiency badge + slot */}
-              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
+              {/* Row 1: name + proficiency badge + slot */}
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
                 <div style={{ flex:1, fontWeight:600, fontSize:13 }}>{displayName}</div>
                 {!proficient && (
                   <span style={{ fontSize:10, padding:'1px 6px', borderRadius:8,
@@ -491,34 +504,29 @@ function AttacksPanel({ character, derived }: { character: Character; derived: D
                 <span style={{ fontSize:11, color:'var(--text-2)', flexShrink:0 }}>{slotLabel}</span>
               </div>
 
-              {/* Stats row: To Hit | Damage dice+mod | Damage type */}
-              <div style={{ display:'flex', gap:16, marginBottom: ws.properties.length > 0 ? 8 : 0 }}>
-                <div style={{ textAlign:'center' }}>
-                  <div style={{ fontSize:10, color:'var(--text-2)', textTransform:'uppercase', letterSpacing:'0.05em' }}>To Hit</div>
-                  <div style={{ fontWeight:800, fontSize:16, color: proficient ? 'var(--accent-4)' : 'var(--text-2)' }}>
-                    {atkMod >= 0 ? '+' : ''}{atkMod}
-                  </div>
-                </div>
-                <div style={{ textAlign:'center' }}>
-                  <div style={{ fontSize:10, color:'var(--text-2)', textTransform:'uppercase', letterSpacing:'0.05em' }}>Damage</div>
-                  <div style={{ fontWeight:700, fontSize:14 }}>
-                    {ws.damage.diceCount}d{ws.damage.dieSize}
-                    {totalDmgMod !== 0 ? ` ${totalDmgMod > 0 ? '+' : ''}${totalDmgMod}` : ''}
-                  </div>
-                  <div style={{ fontSize:11, color:'var(--text-2)', marginTop:1 }}>{ws.damageType}</div>
-                </div>
+              {/* Row 2: type | range/reach | to hit | damage | secondary damage */}
+              <div style={{ display:'grid', gridTemplateColumns: ws.secondaryDamage ? 'auto auto 1fr 1fr 1fr' : 'auto auto 1fr 1fr', gap:8, marginBottom: ws.properties.length > 0 ? 8 : 0, alignItems:'start' }}>
+                <StatCell label="Type" value={weaponType} />
+                <StatCell label="Range" value={rangeLabel} />
+                <StatCell label="To Hit" value={`${atkMod >= 0 ? '+' : ''}${atkMod}`}
+                  valueStyle={{ color: proficient ? 'var(--accent-4)' : 'var(--text-2)', fontWeight: 800, fontSize: 16 }} />
+                <StatCell
+                  label={ws.damageType}
+                  value={`${ws.damage.diceCount}d${ws.damage.dieSize}${dmgMod !== 0 ? ` ${dmgMod > 0 ? '+' : ''}${dmgMod}` : ''}`}
+                />
+                {ws.secondaryDamage && (
+                  <StatCell
+                    label={ws.secondaryDamage.type + ' (2H)'}
+                    value={`${ws.secondaryDamage.roll.diceCount}d${ws.secondaryDamage.roll.dieSize}${ws.secondaryDamage.roll.modifier !== 0 ? ` ${ws.secondaryDamage.roll.modifier > 0 ? '+' : ''}${ws.secondaryDamage.roll.modifier}` : ''}`}
+                  />
+                )}
               </div>
 
-              {/* Properties */}
+              {/* Row 3: properties */}
               {ws.properties.length > 0 && (
                 <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
                   {ws.properties.map(p => (
-                    <PropertyBadge key={p} name={p}
-                      properties={allProperties.filter(ap => {
-                        const cats = ap.applicableCategories;
-                        return !cats || cats === 'all' || (Array.isArray(cats) && cats.includes(item.category));
-                      })}
-                      isProficient={proficient} />
+                    <PropertyBadge key={p} name={p} properties={filteredProps} isProficient={proficient} />
                   ))}
                 </div>
               )}
@@ -526,6 +534,18 @@ function AttacksPanel({ character, derived }: { character: Character; derived: D
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function StatCell({ label, value, valueStyle }: {
+  label: string; value: string;
+  valueStyle?: React.CSSProperties;
+}) {
+  return (
+    <div style={{ textAlign:'center' }}>
+      <div style={{ fontSize:9, color:'var(--text-2)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:2 }}>{label}</div>
+      <div style={{ fontWeight:700, fontSize:14, ...valueStyle }}>{value}</div>
     </div>
   );
 }

@@ -46,7 +46,7 @@ export function useFeatureCardOptions(feature: Feature): CardOption[] {
         options.push({
           id: pathId,
           label: pathFeat.name.replace(' Path', ''),
-          description: pathFeat.description,
+          description: feature.cardOptionTexts?.[pathId] ?? pathFeat.description,
           color: (pathFeat as Feature & { color?: string }).color,
           icon: (pathFeat as Feature & { icon?: string }).icon,
         });

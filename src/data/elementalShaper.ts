@@ -238,7 +238,7 @@ export const elementalShaperClass: Omit<GameClass, 'id'> & { id: string } = {
     'A martial combatant who channels elemental energy through their body. ' +
     'They accumulate Elemental Charges and spend them on Elemental Techniques, ' +
     'building toward a chosen combination of four Elemental Paths.',
-  hitDie: 8,
+  hitDie: 10,
   primaryAbility: ['wisdom'],
   savingThrowProficiencies: ['dexterity', 'wisdom'],
   skillProficiencies: {

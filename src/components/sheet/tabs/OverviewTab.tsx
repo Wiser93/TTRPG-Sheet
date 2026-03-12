@@ -15,24 +15,45 @@ const STAT_LABELS: Record<StatKey, string> = {
 };
 
 const SKILL_LABELS: Record<SkillKey, string> = {
-  acrobatics:    'Acrobatics (DEX)',
-  animalHandling:'Animal Handling (WIS)',
-  arcana:        'Arcana (INT)',
-  athletics:     'Athletics (STR)',
-  deception:     'Deception (CHA)',
-  history:       'History (INT)',
-  insight:       'Insight (WIS)',
-  intimidation:  'Intimidation (CHA)',
-  investigation: 'Investigation (INT)',
-  medicine:      'Medicine (WIS)',
-  nature:        'Nature (INT)',
-  perception:    'Perception (WIS)',
-  performance:   'Performance (CHA)',
-  persuasion:    'Persuasion (CHA)',
-  religion:      'Religion (INT)',
-  sleightOfHand: 'Sleight of Hand (DEX)',
-  stealth:       'Stealth (DEX)',
-  survival:      'Survival (WIS)',
+  acrobatics:    'Acrobatics',
+  animalHandling:'Animal Handling',
+  arcana:        'Arcana',
+  athletics:     'Athletics',
+  deception:     'Deception',
+  history:       'History',
+  insight:       'Insight',
+  intimidation:  'Intimidation',
+  investigation: 'Investigation',
+  medicine:      'Medicine',
+  nature:        'Nature',
+  perception:    'Perception',
+  performance:   'Performance',
+  persuasion:    'Persuasion',
+  religion:      'Religion',
+  sleightOfHand: 'Sleight of Hand',
+  stealth:       'Stealth',
+  survival:      'Survival',
+};
+
+const SKILL_ABILITY: Record<SkillKey, string> = {
+  acrobatics:    'DEX',
+  animalHandling:'WIS',
+  arcana:        'INT',
+  athletics:     'STR',
+  deception:     'CHA',
+  history:       'INT',
+  insight:       'WIS',
+  intimidation:  'CHA',
+  investigation: 'INT',
+  medicine:      'WIS',
+  nature:        'INT',
+  perception:    'WIS',
+  performance:   'CHA',
+  persuasion:    'CHA',
+  religion:      'INT',
+  sleightOfHand: 'DEX',
+  stealth:       'DEX',
+  survival:      'WIS',
 };
 
 function sign(n: number) { return n >= 0 ? `+${n}` : `${n}`; }
@@ -221,11 +242,16 @@ export function OverviewTab({ character, derived }: Props) {
       {/* Saving throws */}
       <div className="card">
         <p className="label" style={{ marginBottom: 8 }}>Saving Throws</p>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
-          {(Object.keys(STAT_LABELS) as StatKey[]).map(stat => {
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1px 1fr', gap: '4px 0' }}>
+          {(Object.keys(STAT_LABELS) as StatKey[]).map((stat, i) => {
             const save = derived.savingThrows[stat];
+            const isRight = i % 2 === 1;
             return (
-              <div key={stat} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+              <div key={stat} style={{
+                display: 'flex', alignItems: 'center', gap: 6, fontSize: 13,
+                padding: isRight ? '2px 0 2px 16px' : '2px 16px 2px 0',
+                gridColumn: isRight ? 3 : 1,
+              }}>
                 <span style={{
                   width: 10, height: 10, borderRadius: '50%',
                   background: save.proficient ? 'var(--accent-4)' : 'var(--bg-3)',
@@ -237,6 +263,12 @@ export function OverviewTab({ character, derived }: Props) {
               </div>
             );
           })}
+          {/* Divider column */}
+          <div style={{
+            gridColumn: 2, gridRow: '1 / 4',
+            borderLeft: '1px solid var(--border)',
+            margin: '2px 0',
+          }} />
         </div>
       </div>
 
@@ -280,29 +312,55 @@ export function OverviewTab({ character, derived }: Props) {
 
       {/* Skills */}
       <div className="card">
-        <p className="label" style={{ marginBottom: 8 }}>
-          Skills · Passive Perception {derived.passivePerception}
-        </p>
+        <p className="label" style={{ marginBottom: 8 }}>Skills</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           {(Object.keys(SKILL_LABELS) as SkillKey[]).map(skill => {
             const s = derived.skills[skill];
             return (
               <div key={skill} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
                 <span style={{
+                  fontSize: 10, fontWeight: 700, color: 'var(--text-2)',
+                  width: 28, flexShrink: 0, textAlign: 'right',
+                }}>
+                  {SKILL_ABILITY[skill]}
+                </span>
+                <span style={{
                   width: 10, height: 10, borderRadius: s.expert ? 2 : '50%',
                   background: s.proficient ? 'var(--accent-4)' : 'var(--bg-3)',
                   border: '1px solid var(--border)',
                   flexShrink: 0,
                 }} />
-                <span style={{ color: s.proficient ? 'var(--text-0)' : 'var(--text-2)' }}>
+                <span style={{ flex: 1, color: s.proficient ? 'var(--text-0)' : 'var(--text-2)' }}>
                   {SKILL_LABELS[skill]}
                 </span>
-                <span style={{ marginLeft: 'auto', fontWeight: 600 }}>{sign(s.bonus)}</span>
+                <span style={{ fontWeight: 600 }}>{sign(s.bonus)}</span>
               </div>
             );
           })}
         </div>
       </div>
+
+      {/* Passive Values */}
+      {(() => {
+        const passiveSkillKeys: SkillKey[] = character.sheetConfig?.passiveSkills ?? ['perception', 'insight', 'investigation'];
+        return (
+          <div className="card">
+            <p className="label" style={{ marginBottom: 8 }}>Passive Values</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {passiveSkillKeys.map(skill => {
+                const s = derived.skills[skill];
+                const passive = 10 + s.bonus;
+                return (
+                  <div key={skill} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                    <span style={{ flex: 1, color: 'var(--text-1)' }}>Passive {SKILL_LABELS[skill]}</span>
+                    <span style={{ fontWeight: 700, fontSize: 15 }}>{passive}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Short rest modal */}
       {shortRestOpen && (
@@ -488,25 +546,35 @@ export function OverviewTab({ character, derived }: Props) {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {restReminder.features.map(f => (
-                <div key={f.id} style={{
-                  background: 'var(--bg-2)', borderRadius: 8, padding: '10px 14px',
-                  borderLeft: '3px solid var(--accent)',
-                }}>
-                  <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>{f.name}</div>
-                  {f.effect && (
-                    <div style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 600, marginBottom: 4 }}>
-                      ⚡ {f.effect}
-                    </div>
-                  )}
-                  {f.grantHeroicInspiration && (
-                    <div style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 600, marginBottom: 4 }}>
-                      ✨ Heroic Inspiration granted
-                    </div>
-                  )}
-                  {f.description && (
-                    <div style={{ fontSize: 12, color: 'var(--text-2)', lineHeight: 1.5 }}>{f.description}</div>
-                  )}
-                </div>
+                f.isCard ? (
+                  <OverviewFeatureCard
+                    key={f.id}
+                    feature={f}
+                    activeValue={(character.featureCardStates ?? {})[f.id] ?? null}
+                    onChange={val => setFeatureCardState(f.id, val)}
+                    compact
+                  />
+                ) : (
+                  <div key={f.id} style={{
+                    background: 'var(--bg-2)', borderRadius: 8, padding: '10px 14px',
+                    borderLeft: '3px solid var(--accent)',
+                  }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>{f.name}</div>
+                    {f.effect && (
+                      <div style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 600, marginBottom: 4 }}>
+                        ⚡ {f.effect}
+                      </div>
+                    )}
+                    {f.grantHeroicInspiration && (
+                      <div style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 600, marginBottom: 4 }}>
+                        ✨ Heroic Inspiration granted
+                      </div>
+                    )}
+                    {f.description && (
+                      <div style={{ fontSize: 12, color: 'var(--text-2)', lineHeight: 1.5 }}>{f.description}</div>
+                    )}
+                  </div>
+                )
               ))}
             </div>
 
@@ -577,16 +645,17 @@ export function OverviewTab({ character, derived }: Props) {
   );
 }
 
-function OverviewFeatureCard({ feature, activeValue, onChange }: {
+function OverviewFeatureCard({ feature, activeValue, onChange, compact }: {
   feature: Feature;
   activeValue: string | null;
   onChange: (val: string | null) => void;
+  compact?: boolean;
 }) {
   const options = useFeatureCardOptions(feature);
   if (options.length === 0) return null;
   const activeOpt = options.find(o => o.id === activeValue);
-  return (
-    <div className="card">
+  const inner = (
+    <>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
         <p className="label">{feature.name}</p>
         {activeValue && (
@@ -618,8 +687,10 @@ function OverviewFeatureCard({ feature, activeValue, onChange }: {
       {activeOpt?.description && (
         <p style={{ fontSize: 12, marginTop: 10, color: activeOpt.color ?? 'var(--accent)' }}>{activeOpt.description}</p>
       )}
-    </div>
+    </>
   );
+  if (compact) return <div style={{ background: 'var(--bg-2)', borderRadius: 8, padding: '10px 14px', borderLeft: '3px solid var(--accent)' }}>{inner}</div>;
+  return <div className="card">{inner}</div>;
 }
 
 function QuickStat({ label, value }: { label: string; value: string | number }) {

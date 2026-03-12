@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useUIStore } from '@/store/uiStore';
+import { useClasses } from '@/hooks/useGameDatabase';
 import type { Character, DerivedStats } from '@/types/character';
 import type { Feature, ActionType } from '@/types/game';
 
@@ -33,13 +34,27 @@ function groupKey(f: Feature): GroupKey {
   return 'informational';
 }
 
-function sourceLabel(f: Feature): string {
-  if (!f.sourceType) return '';
-  return `${f.sourceType.charAt(0).toUpperCase()}${f.sourceType.slice(1)}`;
-}
 
 export function FeaturesTab({ derived }: Props) {
   const all = derived.allFeatures;
+  const allClasses = useClasses() ?? [];
+  const { expandedFeatureIds, toggleFeatureExpanded } = useUIStore();
+
+  // Build a fast id→feature lookup for resolving path parentage
+  const featById = new Map(all.map(f => [f.id, f]));
+
+  function sourceLabel(f: Feature): string {
+    if (!f.sourceType) return '';
+    if (f.sourceType === 'path') {
+      // Show path name, then resolve class name if available
+      const pathFeat = f.sourceId ? featById.get(f.sourceId) : undefined;
+      const pathName = pathFeat?.name ?? 'Path';
+      const classId = f.parentClassId ?? pathFeat?.sourceId;
+      const cls = classId ? allClasses.find(c => c.id === classId) : undefined;
+      return cls ? `${cls.name} › ${pathName}` : pathName;
+    }
+    return `${f.sourceType.charAt(0).toUpperCase()}${f.sourceType.slice(1)}`;
+  }
 
   const grouped: Record<GroupKey, Feature[]> = {
     action: [], bonus_action: [], reaction: [], passive: [], informational: [],
@@ -62,7 +77,8 @@ export function FeaturesTab({ derived }: Props) {
           const features = grouped[group.key];
           if (features.length === 0) return null;
           return (
-            <FeatureGroup key={group.key} label={group.label} color={group.color} features={features} />
+            <FeatureGroup key={group.key} label={group.label} color={group.color} features={features}
+              expandedIds={expandedFeatureIds} onToggle={toggleFeatureExpanded} sourceLabel={sourceLabel} />
           );
         })
       )}
@@ -72,7 +88,11 @@ export function FeaturesTab({ derived }: Props) {
 
 // ── Feature group card ─────────────────────────────────────────
 
-function FeatureGroup({ label, color, features }: { label: string; color: string; features: Feature[] }) {
+function FeatureGroup({ label, color, features, expandedIds, onToggle, sourceLabel }: {
+  label: string; color: string; features: Feature[];
+  expandedIds: Set<string>; onToggle: (id: string) => void;
+  sourceLabel: (f: Feature) => string;
+}) {
   return (
     <div className="card">
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
@@ -83,7 +103,11 @@ function FeatureGroup({ label, color, features }: { label: string; color: string
         </span>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {features.map(f => <FeatureCard key={f.id} feature={f} accentColor={color} />)}
+        {features.map(f => (
+          <FeatureCard key={f.id} feature={f} accentColor={color}
+            expanded={expandedIds.has(f.id)} onToggle={() => onToggle(f.id)}
+            sourceLabel={sourceLabel(f)} />
+        ))}
       </div>
     </div>
   );
@@ -91,8 +115,10 @@ function FeatureGroup({ label, color, features }: { label: string; color: string
 
 // ── Individual feature card ────────────────────────────────────
 
-function FeatureCard({ feature: f, accentColor }: { feature: Feature; accentColor: string }) {
-  const [expanded, setExpanded] = useState(false);
+function FeatureCard({ feature: f, accentColor, expanded, onToggle, sourceLabel }: {
+  feature: Feature; accentColor: string;
+  expanded: boolean; onToggle: () => void; sourceLabel: string;
+}) {
   const hasDetail = !!(f.description || f.trigger || f.effect || f.uses);
 
   return (
@@ -105,7 +131,7 @@ function FeatureCard({ feature: f, accentColor }: { feature: Feature; accentColo
     }}>
       {/* Header */}
       <button
-        onClick={() => hasDetail && setExpanded(!expanded)}
+        onClick={() => hasDetail && onToggle()}
         style={{
           width: '100%', textAlign: 'left', padding: '8px 12px',
           display: 'flex', alignItems: 'center', gap: 8,
@@ -154,7 +180,7 @@ function FeatureCard({ feature: f, accentColor }: { feature: Feature; accentColo
 
           {/* Source label */}
           {f.sourceType && (
-            <p style={{ fontSize: 10, color: 'var(--text-2)', marginTop: 1 }}>{sourceLabel(f)}</p>
+            <p style={{ fontSize: 10, color: 'var(--text-2)', marginTop: 1 }}>{sourceLabel}</p>
           )}
         </div>
 

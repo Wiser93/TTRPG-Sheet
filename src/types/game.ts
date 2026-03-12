@@ -240,7 +240,7 @@ export interface Feature {
    * option definitions (label, description, color, icon).
    * e.g. { choiceId: 'elemental_path' } → shows whichever elements have been chosen.
    */
-  cardOptionSource?: { choiceId: string };
+  cardOptionSource?: { choiceId: string } | { pathBased: true };
   /**
    * Static card options (used when options don't come from a choice).
    * Each option has an id, label, optional description, color, icon.
@@ -252,12 +252,23 @@ export interface Feature {
     color?: string;
     icon?: string;
   }>;
+  /**
+   * Custom description text per card option, keyed by option ID.
+   * Overrides the path/choice option description when set.
+   * Falls back to the option's own description if the key is absent.
+   */
+  cardOptionTexts?: Record<string, string>;
 
   // ── Display ─────────────────────────────────────────────────
   /** Accent color for display (hex string, e.g. '#61afef') */
   color?: string;
   /** Emoji or short icon string for display */
   icon?: string;
+  /**
+   * ID of the parent class this feature ultimately belongs to.
+   * Set on path features (sourceType: 'path') to trace back to the originating class.
+   */
+  parentClassId?: string;
 
   // ── Elemental Path ──────────────────────────────────────────
   /** If true, this feature is an Elemental Path with tiered progression */
