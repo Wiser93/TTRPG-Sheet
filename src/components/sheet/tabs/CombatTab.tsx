@@ -24,7 +24,7 @@ interface Props { character: Character; derived: DerivedStats }
 export function CombatTab({ character, derived }: Props) {
   const {
     addDeathSave, resetDeathSaves,
-    addCondition, removeCondition,
+    addCondition, removeCondition, updateCondition,
     setFeatureCardState,
   } = useCharacterStore();
   const { expandedFeatureIds, toggleFeatureExpanded } = useUIStore();
@@ -109,6 +109,7 @@ export function CombatTab({ character, derived }: Props) {
         dbConditions={dbConditions}
         onAdd={addCondition}
         onRemove={removeCondition}
+        onUpdate={updateCondition}
       />
 
     </div>
@@ -546,26 +547,25 @@ function StatCell({ label, value, valueStyle }: {
 
 // ── Conditions card ────────────────────────────────────────────
 
+// ── Conditions card ────────────────────────────────────────────
+
 function ConditionsCard({
-  active, dbConditions, onAdd, onRemove,
+  active, dbConditions, onAdd, onRemove, onUpdate,
 }: {
   active: import('@/types/character').ActiveCondition[];
   dbConditions: (Condition & { id: string })[];
   onAdd: (c: import('@/types/character').ActiveCondition) => void;
   onRemove: (id: string) => void;
+  onUpdate: (id: string, changes: Partial<import('@/types/character').ActiveCondition>) => void;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [tooltip, setTooltip] = useState<string | null>(null);
 
-  // Conditions not yet active
+  // Conditions not yet active (levelled ones can be added again at level 1)
   const available = dbConditions.filter(dc => !active.some(ac => ac.name === dc.name));
 
   function addFromDb(dc: Condition & { id: string }) {
-    onAdd({
-      id: crypto.randomUUID(),
-      name: dc.name,
-      description: dc.description,
-    });
+    onAdd({ id: crypto.randomUUID(), name: dc.name, description: dc.description, level: dc.levels?.length ? 1 : undefined });
     setPickerOpen(false);
   }
 
@@ -573,6 +573,24 @@ function ConditionsCard({
     const name = prompt('Custom condition name:');
     if (name?.trim()) onAdd({ id: crypto.randomUUID(), name: name.trim() });
     setPickerOpen(false);
+  }
+
+  /** Build tooltip content for a levelled condition */
+  function levelEffects(dbDef: Condition, currentLevel: number): string[] {
+    if (!dbDef.levels?.length) return dbDef.effects ?? [];
+    const shared = dbDef.effects ?? [];
+    // Collect cumulative effects up to current level, or just this level if not cumulative
+    const levelled: string[] = [];
+    for (const lv of dbDef.levels) {
+      if (lv.level > currentLevel) break;
+      if (lv.cumulative === false) {
+        // Only show this level's effects if it's the current level
+        if (lv.level === currentLevel) levelled.push(...lv.effects);
+      } else {
+        levelled.push(...lv.effects);
+      }
+    }
+    return [...shared, ...levelled];
   }
 
   return (
@@ -586,42 +604,97 @@ function ConditionsCard({
             const dbDef = dbConditions.find(d => d.name === c.name);
             const color = dbDef?.color ?? 'var(--accent-2)';
             const icon  = dbDef?.icon ?? '';
-            const effects = dbDef?.effects ?? [];
-            const isHovered = tooltip === c.id;
+            const isLevelled = !!(dbDef?.levels?.length);
+            const maxLevel = dbDef?.maxLevel ?? dbDef?.levels?.length ?? 1;
+            const currentLevel = c.level ?? 1;
+            const effects = dbDef ? levelEffects(dbDef, currentLevel) : [];
+            const isOpen = tooltip === c.id;
+
             return (
               <div key={c.id} style={{ position: 'relative' }}>
-                <div
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 5,
-                    padding: '4px 10px', borderRadius: 20, fontSize: 12, fontWeight: 700,
-                    background: color, color: '#fff', cursor: effects.length ? 'pointer' : 'default',
-                    userSelect: 'none',
-                  }}
-                  onClick={() => setTooltip(isHovered ? null : c.id)}
-                >
-                  {icon && <span>{icon}</span>}
-                  {c.name}
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center',
+                  borderRadius: 20, overflow: 'hidden',
+                  border: `1px solid ${color}`,
+                  background: color,
+                }}>
+                  {/* Main label — click opens tooltip */}
                   <button
-                    onClick={e => { e.stopPropagation(); onRemove(c.id); }}
-                    style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)', lineHeight: 1, marginLeft: 2 }}
-                  >×</button>
+                    onClick={() => setTooltip(isOpen ? null : c.id)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 5,
+                      padding: '4px 8px 4px 10px', fontSize: 12, fontWeight: 700,
+                      color: '#fff', cursor: effects.length ? 'pointer' : 'default',
+                    }}
+                  >
+                    {icon && <span>{icon}</span>}
+                    {c.name}
+                    {isLevelled && (
+                      <span style={{
+                        fontSize: 11, fontWeight: 900,
+                        background: 'rgba(0,0,0,0.25)', borderRadius: 10,
+                        padding: '1px 5px', marginLeft: 2,
+                      }}>
+                        {currentLevel}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Level controls for levelled conditions */}
+                  {isLevelled && (
+                    <div style={{ display: 'flex', alignItems: 'center', borderLeft: '1px solid rgba(255,255,255,0.3)' }}>
+                      <button
+                        onClick={() => {
+                          if (currentLevel <= 1) { onRemove(c.id); } else { onUpdate(c.id, { level: currentLevel - 1 }); }
+                        }}
+                        style={{ fontSize: 14, fontWeight: 700, color: '#fff', padding: '0 6px', lineHeight: '28px' }}
+                        title={currentLevel <= 1 ? 'Remove condition' : 'Decrease level'}
+                      >−</button>
+                      {currentLevel < maxLevel && (
+                        <button
+                          onClick={() => onUpdate(c.id, { level: currentLevel + 1 })}
+                          style={{ fontSize: 14, fontWeight: 700, color: '#fff', padding: '0 6px', lineHeight: '28px' }}
+                          title="Increase level"
+                        >+</button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Remove button for non-levelled */}
+                  {!isLevelled && (
+                    <button
+                      onClick={() => onRemove(c.id)}
+                      style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)', padding: '0 8px', lineHeight: '28px' }}
+                    >×</button>
+                  )}
                 </div>
-                {isHovered && effects.length > 0 && (
+
+                {/* Tooltip */}
+                {isOpen && (
                   <div style={{
                     position: 'absolute', top: '100%', left: 0, zIndex: 200, marginTop: 4,
                     background: 'var(--bg-0)', border: '1px solid var(--border)',
-                    borderRadius: 8, padding: '10px 12px', minWidth: 220, maxWidth: 300,
+                    borderRadius: 8, padding: '10px 12px', minWidth: 240, maxWidth: 320,
                     boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
                   }}>
-                    <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)', marginBottom: 6 }}>{c.name}</p>
+                    <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)', marginBottom: 4 }}>
+                      {c.name}{isLevelled ? ` (Level ${currentLevel})` : ''}
+                    </p>
                     {c.description && (
                       <p style={{ fontSize: 11, color: 'var(--text-2)', marginBottom: 6 }}>{c.description}</p>
                     )}
-                    <ul style={{ paddingLeft: 14, margin: 0 }}>
-                      {effects.map((ef, i) => (
-                        <li key={i} style={{ fontSize: 11, color: 'var(--text-1)', marginBottom: 3 }}>{ef}</li>
-                      ))}
-                    </ul>
+                    {effects.length > 0 && (
+                      <ul style={{ paddingLeft: 14, margin: 0 }}>
+                        {effects.map((ef, i) => (
+                          <li key={i} style={{ fontSize: 11, color: 'var(--text-1)', marginBottom: 3 }}>{ef}</li>
+                        ))}
+                      </ul>
+                    )}
+                    {isLevelled && currentLevel < maxLevel && (
+                      <p style={{ fontSize: 10, color: 'var(--text-2)', marginTop: 6, fontStyle: 'italic' }}>
+                        Use + to increase to level {currentLevel + 1}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
@@ -634,7 +707,7 @@ function ConditionsCard({
         <p style={{ color: 'var(--text-2)', fontSize: 13, marginBottom: 10 }}>No conditions active.</p>
       )}
 
-      {/* Add button / picker */}
+      {/* Picker */}
       {!pickerOpen ? (
         <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setPickerOpen(true)}>
           + Add Condition
@@ -658,7 +731,7 @@ function ConditionsCard({
                   }}
                 >
                   {dc.icon && <span>{dc.icon}</span>}
-                  {dc.name}
+                  {dc.name}{dc.levels?.length ? ' ↑' : ''}
                 </button>
               ))}
             </div>
@@ -668,12 +741,8 @@ function ConditionsCard({
             </p>
           )}
           <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={addCustom}>
-              + Custom…
-            </button>
-            <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={() => setPickerOpen(false)}>
-              Cancel
-            </button>
+            <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={addCustom}>+ Custom…</button>
+            <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={() => setPickerOpen(false)}>Cancel</button>
           </div>
         </div>
       )}

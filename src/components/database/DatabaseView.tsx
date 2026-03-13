@@ -6,6 +6,9 @@ import { elementalShaperClass, elementalShaperFeatures } from '@/data/elementalS
 import { theHarmonist, theHarmonistFeatures } from '@/data/theHarmonist';
 import { seedSrdProperties } from '@/data/srdProperties';
 import { seedSrdItems } from '@/data/srdItems';
+import { seedSrdConditions } from '@/data/srdConditions';
+import { seedSrdSpecies } from '@/data/srdSpecies';
+import { seedSrdFeats } from '@/data/srdFeats';
 import { SlidePanel } from '@/components/ui/SlidePanel';
 import { ItemForm } from './forms/ItemForm';
 import { SpellForm } from './forms/SpellForm';
@@ -315,6 +318,9 @@ export function DatabaseView() {
           installedClassIds={(classes ?? []).map(c => c.id)}
           installedSubclassIds={(subclasses ?? []).map(s => s.id)}
           installedPropertyCount={itemProperties?.length ?? 0}
+          installedConditionCount={conditions?.length ?? 0}
+          installedSpeciesCount={species?.length ?? 0}
+          installedFeatCount={feats?.length ?? 0}
           onNavigate={setDatabaseSection}
         />
       ) : (
@@ -425,11 +431,17 @@ function LibraryPanel({
   installedClassIds,
   installedSubclassIds,
   installedPropertyCount,
+  installedConditionCount,
+  installedSpeciesCount,
+  installedFeatCount,
   onNavigate,
 }: {
   installedClassIds: string[];
   installedSubclassIds: string[];
   installedPropertyCount: number;
+  installedConditionCount: number;
+  installedSpeciesCount: number;
+  installedFeatCount: number;
   onNavigate: (s: ReturnType<typeof useUIStore.getState>['databaseSection']) => void;
 }) {
   const [installing, setInstalling] = useState<string | null>(null);
@@ -523,9 +535,67 @@ function LibraryPanel({
       requires: ['srd-properties'],
       install: async () => { await seedSrdItems(); },
     },
+    {
+      id: 'srd-conditions',
+      name: 'SRD Conditions',
+      version: '1.0',
+      type: 'compendium',
+      typeLabel: 'Compendium',
+      icon: '🩹',
+      description:
+        'All 15 standard conditions from the 5e SRD, including Exhaustion as a fully levelled ' +
+        'condition with all six severity tiers and their cumulative effects. Each condition ' +
+        'includes its mechanical bullet points for tooltip display on the combat tab.',
+      includes: [
+        '14 standard conditions (Blinded, Charmed, Deafened…)',
+        '1 levelled condition — Exhaustion (6 cumulative levels)',
+      ],
+      navigateTo: 'conditions',
+      install: async () => { await seedSrdConditions(); },
+    },
+    {
+      id: 'srd-species',
+      name: 'SRD Species',
+      version: '1.0',
+      type: 'compendium',
+      typeLabel: 'Compendium',
+      icon: '🧬',
+      description:
+        'All nine species from the 5e SRD: Dwarf, Elf, Halfling, Human, Dragonborn, Gnome, ' +
+        'Half-Elf, Half-Orc, and Tiefling. Each species includes its traits as Feature entries ' +
+        'so they display correctly on the character sheet.',
+      includes: [
+        '9 species with full feature sets',
+        'Darkvision, resistances, ability bonuses, and innate spells described per species',
+      ],
+      navigateTo: 'species',
+      install: async () => { await seedSrdSpecies(); },
+    },
+    {
+      id: 'srd-feats',
+      name: 'SRD Feats',
+      version: '1.0',
+      type: 'compendium',
+      typeLabel: 'Compendium',
+      icon: '⭐',
+      description:
+        'All 41 feats available in the 5e SRD. Each feat\'s benefits are stored as Feature ' +
+        'entries with action types, so they appear correctly in the Features tab. Includes ' +
+        'prerequisites and repeatable flags where applicable.',
+      includes: [
+        '41 feats (Alert, Great Weapon Master, Sharpshooter, War Caster…)',
+        'Prerequisites noted on each feat',
+        'Action types set on reaction and bonus-action feats',
+      ],
+      navigateTo: 'feats',
+      install: async () => { await seedSrdFeats(); },
+    },
   ];
 
   function isInstalled(pack: ContentPack) {
+    if (pack.id === 'srd-conditions') return installedConditionCount > 0;
+    if (pack.id === 'srd-species')    return installedSpeciesCount > 0;
+    if (pack.id === 'srd-feats')      return installedFeatCount > 0;
     if (!pack.rootId || !pack.rootType) return false;
     return pack.rootType === 'class'
       ? installedClassIds.includes(pack.rootId)
@@ -536,6 +606,7 @@ function LibraryPanel({
     if (!pack.requires) return true;
     return pack.requires.every(reqId => {
       if (reqId === 'srd-properties') return installedPropertyCount > 0;
+      if (reqId === 'srd-conditions') return installedConditionCount > 0;
       return installedClassIds.includes(reqId) || installedSubclassIds.includes(reqId);
     });
   }

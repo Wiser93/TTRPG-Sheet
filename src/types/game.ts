@@ -611,13 +611,26 @@ export interface Item {
 // CONDITIONS (DB template — distinct from ActiveCondition on a character)
 // ============================================================
 
+/** One severity level for a levelled condition (e.g. Exhaustion level 3). */
+export interface ConditionLevel {
+  level: number;
+  label?: string;              // e.g. "Level 3" or custom name
+  effects: string[];           // bullet-point mechanics at this level
+  /** Whether this level is cumulative with lower levels (true by default) */
+  cumulative?: boolean;
+}
+
 /** A condition definition stored in the game database. */
 export interface Condition {
   id: string;
   name: string;
   description: string;
-  /** Bullet-point mechanical effects shown in the tooltip */
+  /** Top-level bullet-point effects (for non-levelled conditions, or effects shared at all levels) */
   effects?: string[];
+  /** If set, this is a levelled condition (e.g. Exhaustion). Supersedes flat effects display. */
+  levels?: ConditionLevel[];
+  /** Maximum level (defaults to levels.length if levels are defined) */
+  maxLevel?: number;
   /** Emoji or short icon */
   icon?: string;
   /** CSS colour for the badge */
