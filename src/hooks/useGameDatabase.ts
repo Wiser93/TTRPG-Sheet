@@ -159,3 +159,8 @@ export function useFeaturesBySource(sourceId: string | undefined) {
 export function useItemProperties() {
   return useLiveQuery(() => live(db.itemProperties).sortBy('name'), []);
 }
+
+/** Live list of all condition definitions */
+export function useConditions() {
+  return useLiveQuery(() => live(db.conditions).sortBy('name'), []);
+}

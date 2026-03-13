@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { Item, Spell, GameClass, Subclass, Feat, Species, Background, Feature } from '@/types/game';
+import type { Item, Spell, GameClass, Subclass, Feat, Species, Background, Feature, Condition } from '@/types/game';
 import type { Character } from '@/types/character';
 
 // ============================================================
@@ -29,6 +29,7 @@ export type DBFeat = Feat & DBRecord;
 export type DBSpecies = Species & DBRecord;
 export type DBBackground = Background & DBRecord;
 export type DBFeature = Feature & DBRecord;
+export type DBCondition = Condition & DBRecord;
 export type DBCharacter = Character & DBRecord;
 
 // ============================================================
@@ -46,6 +47,7 @@ export class AppDatabase extends Dexie {
   backgrounds!: Table<DBBackground>;
   features!: Table<DBFeature>;
   itemProperties!: Table<import('@/types/game').ItemProperty & { updatedAt?: string; deletedAt?: string }>;
+  conditions!: Table<DBCondition>;
 
   // Character data
   characters!: Table<DBCharacter>;
@@ -83,6 +85,11 @@ export class AppDatabase extends Dexie {
       if (existing.length > 0) {
         await tx.table('itemProperties').bulkAdd(existing);
       }
+    });
+
+    // ── Version 4: add conditions table ─────────────────────
+    this.version(4).stores({
+      conditions: '&id, name, updatedAt, deletedAt',
     });
   }
 }

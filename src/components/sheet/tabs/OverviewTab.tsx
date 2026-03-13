@@ -262,7 +262,7 @@ export function OverviewTab({ character, derived }: Props) {
           />
           <button
             className="btn btn-ghost"
-            style={{ flex: 1, fontSize: 13, padding: '8px 0', color: 'var(--accent-2)', fontWeight: 700, border: '1px solid var(--accent-2)' }}
+            style={{ flex: 1, fontSize: 13, padding: '8px 0', color: 'var(--accent-2)', fontWeight: 700, border: '1px solid var(--accent-2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             onClick={() => {
               const n = parseInt(deltaStr, 10);
               if (!isNaN(n) && n > 0) { applyDelta(-n, derived.maxHP); setDeltaStr(''); }
@@ -272,7 +272,7 @@ export function OverviewTab({ character, derived }: Props) {
           </button>
           <button
             className="btn btn-ghost"
-            style={{ flex: 1, fontSize: 13, padding: '8px 0', color: 'var(--accent-4)', fontWeight: 700, border: '1px solid var(--accent-4)' }}
+            style={{ flex: 1, fontSize: 13, padding: '8px 0', color: 'var(--accent-4)', fontWeight: 700, border: '1px solid var(--accent-4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             onClick={() => {
               const n = parseInt(deltaStr, 10);
               if (!isNaN(n) && n > 0) { applyDelta(n, derived.maxHP); setDeltaStr(''); }

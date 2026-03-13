@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { useUIStore } from '@/store/uiStore';
 import { useCharacterStore } from '@/store/characterStore';
 import { useFeatureCardOptions } from '@/hooks/useFeatureCardOptions';
-import { useItems, useItemProperties } from '@/hooks/useGameDatabase';
+import { useItems, useItemProperties, useConditions } from '@/hooks/useGameDatabase';
 import type { Character, DerivedStats, ResourceState } from '@/types/character';
-import type { Feature, ActionType } from '@/types/game';
+import type { Feature, ActionType, Condition } from '@/types/game';
 
 function slugify(name: string) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -28,6 +28,7 @@ export function CombatTab({ character, derived }: Props) {
     setFeatureCardState,
   } = useCharacterStore();
   const { expandedFeatureIds, toggleFeatureExpanded } = useUIStore();
+  const dbConditions = useConditions() ?? [];
 
   // Resources split by combatResource flag
   const combatResources = derived.allResources.filter(r => {
@@ -103,33 +104,12 @@ export function CombatTab({ character, derived }: Props) {
       ))}
 
       {/* ── Conditions ─────────────────────────────────────── */}
-      <div className="card">
-        <p className="label" style={{ marginBottom: 8 }}>Conditions</p>
-        {character.conditions.length === 0 ? (
-          <p style={{ color: 'var(--text-2)', fontSize: 13 }}>No conditions active.</p>
-        ) : (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {character.conditions.map(c => (
-              <div key={c.id} style={{
-                background: 'var(--bg-3)', border: '1px solid var(--accent-2)',
-                borderRadius: 20, padding: '3px 10px', fontSize: 12,
-                display: 'flex', alignItems: 'center', gap: 6,
-              }}>
-                {c.name}
-                <button onClick={() => removeCondition(c.id)}
-                  style={{ fontSize: 14, color: 'var(--text-2)', lineHeight: 1 }}>×</button>
-              </div>
-            ))}
-          </div>
-        )}
-        <button className="btn btn-ghost" style={{ marginTop: 10, fontSize: 12 }}
-          onClick={() => {
-            const name = prompt('Condition name:');
-            if (name) addCondition({ id: crypto.randomUUID(), name });
-          }}>
-          + Add Condition
-        </button>
-      </div>
+      <ConditionsCard
+        active={character.conditions}
+        dbConditions={dbConditions}
+        onAdd={addCondition}
+        onRemove={removeCondition}
+      />
 
     </div>
   );
@@ -505,7 +485,7 @@ function AttacksPanel({ character, derived }: { character: Character; derived: D
               </div>
 
               {/* Row 2: type | range/reach | to hit | damage | secondary damage */}
-              <div style={{ display:'grid', gridTemplateColumns: ws.secondaryDamage ? 'auto auto 1fr 1fr 1fr' : 'auto auto 1fr 1fr', gap:8, marginBottom: ws.properties.length > 0 ? 8 : 0, alignItems:'start' }}>
+              <div style={{ display:'grid', gridTemplateColumns: ws.secondaryDamage ? 'auto auto 1fr 1fr 1fr' : 'auto auto 1fr 1fr', gap:8, marginBottom: (ws.versatileDamage || ws.properties.length > 0) ? 4 : 0, alignItems:'start' }}>
                 <StatCell label="Type" value={weaponType} />
                 <StatCell label="Range" value={rangeLabel} />
                 <StatCell label="To Hit" value={`${atkMod >= 0 ? '+' : ''}${atkMod}`}
@@ -516,15 +496,29 @@ function AttacksPanel({ character, derived }: { character: Character; derived: D
                 />
                 {ws.secondaryDamage && (
                   <StatCell
-                    label={ws.secondaryDamage.type + ' (2H)'}
+                    label={`+ ${ws.secondaryDamage.type}`}
                     value={`${ws.secondaryDamage.roll.diceCount}d${ws.secondaryDamage.roll.dieSize}${ws.secondaryDamage.roll.modifier !== 0 ? ` ${ws.secondaryDamage.roll.modifier > 0 ? '+' : ''}${ws.secondaryDamage.roll.modifier}` : ''}`}
                   />
                 )}
               </div>
 
+              {/* Versatile two-handed damage — sub-row, lighter style */}
+              {ws.versatileDamage && (() => {
+                const vd = ws.versatileDamage;
+                const versatileStr = `${vd.diceCount}d${vd.dieSize}${dmgMod !== 0 ? ` ${dmgMod > 0 ? '+' : ''}${dmgMod}` : ''}`;
+                return (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: ws.properties.length > 0 ? 6 : 0, paddingLeft: 4 }}>
+                    <span style={{ fontSize: 9, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.05em', flexShrink: 0 }}>2H</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-2)', fontWeight: 600 }}>
+                      {versatileStr} {ws.damageType}
+                    </span>
+                  </div>
+                );
+              })()}
+
               {/* Row 3: properties */}
               {ws.properties.length > 0 && (
-                <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
+                <div style={{ display:'flex', gap:4, flexWrap:'wrap', marginTop: ws.versatileDamage ? 0 : 0 }}>
                   {ws.properties.map(p => (
                     <PropertyBadge key={p} name={p} properties={filteredProps} isProficient={proficient} />
                   ))}
@@ -546,6 +540,143 @@ function StatCell({ label, value, valueStyle }: {
     <div style={{ textAlign:'center' }}>
       <div style={{ fontSize:9, color:'var(--text-2)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:2 }}>{label}</div>
       <div style={{ fontWeight:700, fontSize:14, ...valueStyle }}>{value}</div>
+    </div>
+  );
+}
+
+// ── Conditions card ────────────────────────────────────────────
+
+function ConditionsCard({
+  active, dbConditions, onAdd, onRemove,
+}: {
+  active: import('@/types/character').ActiveCondition[];
+  dbConditions: (Condition & { id: string })[];
+  onAdd: (c: import('@/types/character').ActiveCondition) => void;
+  onRemove: (id: string) => void;
+}) {
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [tooltip, setTooltip] = useState<string | null>(null);
+
+  // Conditions not yet active
+  const available = dbConditions.filter(dc => !active.some(ac => ac.name === dc.name));
+
+  function addFromDb(dc: Condition & { id: string }) {
+    onAdd({
+      id: crypto.randomUUID(),
+      name: dc.name,
+      description: dc.description,
+    });
+    setPickerOpen(false);
+  }
+
+  function addCustom() {
+    const name = prompt('Custom condition name:');
+    if (name?.trim()) onAdd({ id: crypto.randomUUID(), name: name.trim() });
+    setPickerOpen(false);
+  }
+
+  return (
+    <div className="card">
+      <p className="label" style={{ marginBottom: 10 }}>Conditions</p>
+
+      {/* Active badges */}
+      {active.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+          {active.map(c => {
+            const dbDef = dbConditions.find(d => d.name === c.name);
+            const color = dbDef?.color ?? 'var(--accent-2)';
+            const icon  = dbDef?.icon ?? '';
+            const effects = dbDef?.effects ?? [];
+            const isHovered = tooltip === c.id;
+            return (
+              <div key={c.id} style={{ position: 'relative' }}>
+                <div
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 5,
+                    padding: '4px 10px', borderRadius: 20, fontSize: 12, fontWeight: 700,
+                    background: color, color: '#fff', cursor: effects.length ? 'pointer' : 'default',
+                    userSelect: 'none',
+                  }}
+                  onClick={() => setTooltip(isHovered ? null : c.id)}
+                >
+                  {icon && <span>{icon}</span>}
+                  {c.name}
+                  <button
+                    onClick={e => { e.stopPropagation(); onRemove(c.id); }}
+                    style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)', lineHeight: 1, marginLeft: 2 }}
+                  >×</button>
+                </div>
+                {isHovered && effects.length > 0 && (
+                  <div style={{
+                    position: 'absolute', top: '100%', left: 0, zIndex: 200, marginTop: 4,
+                    background: 'var(--bg-0)', border: '1px solid var(--border)',
+                    borderRadius: 8, padding: '10px 12px', minWidth: 220, maxWidth: 300,
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+                  }}>
+                    <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)', marginBottom: 6 }}>{c.name}</p>
+                    {c.description && (
+                      <p style={{ fontSize: 11, color: 'var(--text-2)', marginBottom: 6 }}>{c.description}</p>
+                    )}
+                    <ul style={{ paddingLeft: 14, margin: 0 }}>
+                      {effects.map((ef, i) => (
+                        <li key={i} style={{ fontSize: 11, color: 'var(--text-1)', marginBottom: 3 }}>{ef}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {active.length === 0 && (
+        <p style={{ color: 'var(--text-2)', fontSize: 13, marginBottom: 10 }}>No conditions active.</p>
+      )}
+
+      {/* Add button / picker */}
+      {!pickerOpen ? (
+        <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setPickerOpen(true)}>
+          + Add Condition
+        </button>
+      ) : (
+        <div style={{ background: 'var(--bg-2)', borderRadius: 8, padding: 10, border: '1px solid var(--border)' }}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+            Add Condition
+          </p>
+          {available.length > 0 ? (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+              {available.map(dc => (
+                <button
+                  key={dc.id}
+                  onClick={() => addFromDb(dc)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 4,
+                    padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700,
+                    background: dc.color ?? 'var(--accent-2)', color: '#fff',
+                    cursor: 'pointer', border: 'none',
+                  }}
+                >
+                  {dc.icon && <span>{dc.icon}</span>}
+                  {dc.name}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p style={{ fontSize: 11, color: 'var(--text-2)', marginBottom: 8, fontStyle: 'italic' }}>
+              All defined conditions are already active.
+            </p>
+          )}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={addCustom}>
+              + Custom…
+            </button>
+            <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={() => setPickerOpen(false)}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

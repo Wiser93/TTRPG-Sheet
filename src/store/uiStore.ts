@@ -19,7 +19,7 @@ interface UIStore {
   view: AppView;
   activeCharacterId: string | null;
   sheetTab: SheetTab;
-  databaseSection: 'items' | 'spells' | 'classes' | 'subclasses' | 'feats' | 'species' | 'backgrounds' | 'features' | 'properties' | 'library';
+  databaseSection: 'items' | 'spells' | 'classes' | 'subclasses' | 'feats' | 'species' | 'backgrounds' | 'features' | 'properties' | 'conditions' | 'library';
   modalStack: string[];
   /** Feature IDs currently expanded on the sheet — persists across tab switches */
   expandedFeatureIds: Set<string>;

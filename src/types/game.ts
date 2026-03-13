@@ -554,6 +554,8 @@ export type EquipSlot =
 export interface WeaponStats {
   damage: RollExpression;
   damageType: DamageType;
+  /** Two-handed damage die (Versatile). Inherits damage type + ability mod from primary. */
+  versatileDamage?: { diceCount: number; dieSize: 4|6|8|10|12|20|100 };
   secondaryDamage?: { roll: RollExpression; type: DamageType };
   range?: { normal: number; long: number };
   properties: string[];        // e.g. "finesse", "thrown", "versatile 1d10"
@@ -603,4 +605,21 @@ export interface Item {
   stackable?: boolean;
   tags?: string[];
   customFields?: Record<string, unknown>;
+}
+
+// ============================================================
+// CONDITIONS (DB template — distinct from ActiveCondition on a character)
+// ============================================================
+
+/** A condition definition stored in the game database. */
+export interface Condition {
+  id: string;
+  name: string;
+  description: string;
+  /** Bullet-point mechanical effects shown in the tooltip */
+  effects?: string[];
+  /** Emoji or short icon */
+  icon?: string;
+  /** CSS colour for the badge */
+  color?: string;
 }

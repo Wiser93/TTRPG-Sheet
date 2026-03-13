@@ -1,4 +1,4 @@
-import { db, makeDBMeta, markDirty, live, type DBItem, type DBSpell, type DBClass, type DBFeat, type DBFeature, type DBSpecies, type DBBackground, type DBSubclass } from './schema';
+import { db, makeDBMeta, markDirty, live, type DBItem, type DBSpell, type DBClass, type DBFeat, type DBFeature, type DBSpecies, type DBBackground, type DBSubclass, type DBCondition } from './schema';
 
 // ============================================================
 // GENERIC HELPERS
@@ -276,4 +276,28 @@ export async function clearAllGameContent(): Promise<void> {
       await db.itemProperties.clear();
     }
   );
+}
+
+// ============================================================
+// CONDITIONS
+// ============================================================
+
+export async function getConditions(): Promise<DBCondition[]> {
+  return live(db.conditions).toArray();
+}
+
+export async function upsertCondition(cond: InsertPayload<DBCondition> & { id?: string }): Promise<string> {
+  const existing = cond.id ? await db.conditions.get(cond.id) : undefined;
+  if (existing) {
+    await db.conditions.put(markDirty<DBCondition>({ ...existing, ...cond }) as DBCondition);
+    return existing.id;
+  }
+  const meta = makeDBMeta();
+  const record: DBCondition = { ...meta, ...cond, id: (cond as { id?: string }).id ?? meta.id } as DBCondition;
+  await db.conditions.add(record);
+  return record.id;
+}
+
+export async function deleteCondition(id: string): Promise<void> {
+  await db.conditions.update(id, { deletedAt: new Date().toISOString(), isDirty: true });
 }

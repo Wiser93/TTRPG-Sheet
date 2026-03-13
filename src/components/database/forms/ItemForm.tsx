@@ -16,6 +16,7 @@ function defaultWeapon(existing?: Item['weaponStats']): WeaponStats {
     damageType: existing?.damageType ?? 'slashing',
     properties: existing?.properties ?? [],
     attackBonus: existing?.attackBonus ?? 0,
+    versatileDamage: existing?.versatileDamage,
     secondaryDamage: existing?.secondaryDamage,
   };
 }
@@ -235,12 +236,35 @@ export function ItemForm({ initial, onSave, onCancel, isSaving }: ItemFormProps)
             <LabeledInput label="Attack Bonus (additional)" type="number" value={weapon.attackBonus ?? 0}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => patch({ weaponStats: { ...weapon, attackBonus: Number(e.target.value) } })} />
 
-            {/* Secondary damage (versatile / alternate form) */}
+            {/* Versatile damage — shown only when Versatile property is selected */}
+            {weapon.properties.includes('Versatile') && (() => {
+              const vd = weapon.versatileDamage;
+              return (
+                <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+                  <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-2)', marginBottom: 8 }}>
+                    Versatile (Two-Handed) Damage
+                    <span style={{ fontWeight: 400, textTransform: 'none', marginLeft: 6 }}>
+                      — inherits damage type and ability modifier from primary
+                    </span>
+                  </p>
+                  <FormRow cols={2}>
+                    <LabeledInput label="Dice Count" type="number" min={1}
+                      value={vd?.diceCount ?? weapon.damage.diceCount}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => patch({ weaponStats: { ...weapon, versatileDamage: { diceCount: Number(e.target.value), dieSize: vd?.dieSize ?? weapon.damage.dieSize as 4|6|8|10|12|20|100 } } })} />
+                    <LabeledSelect label="Die Size" value={String(vd?.dieSize ?? weapon.damage.dieSize)}
+                      onChange={(e: React.ChangeEvent<HTMLSelectElement>) => patch({ weaponStats: { ...weapon, versatileDamage: { diceCount: vd?.diceCount ?? weapon.damage.diceCount, dieSize: Number(e.target.value) as 4|6|8|10|12|20|100 } } })}
+                      options={DIE_SIZES.map(d => ({ value: String(d), label: `d${d}` }))} />
+                  </FormRow>
+                </div>
+              );
+            })()}
+
+            {/* Secondary damage — for weapons that deal multiple damage types simultaneously */}
             <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                 <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-2)' }}>
-                  Secondary Damage
-                  <span style={{ fontWeight: 400, textTransform: 'none', marginLeft: 6 }}>— optional, shown in the 5th column (e.g. versatile two-hand)</span>
+                  Additional Damage
+                  <span style={{ fontWeight: 400, textTransform: 'none', marginLeft: 6 }}>— separate roll, different damage type (e.g. +1d6 fire)</span>
                 </p>
                 {weapon.secondaryDamage ? (
                   <button type="button" className="btn btn-ghost" style={{ fontSize: 11, color: 'var(--accent-2)' }}
@@ -249,8 +273,8 @@ export function ItemForm({ initial, onSave, onCancel, isSaving }: ItemFormProps)
                   </button>
                 ) : (
                   <button type="button" className="btn btn-ghost" style={{ fontSize: 11 }}
-                    onClick={() => patch({ weaponStats: { ...weapon, secondaryDamage: { roll: { diceCount: 1, dieSize: 8, modifier: 0 }, type: weapon.damageType } } })}>
-                    + Add secondary damage
+                    onClick={() => patch({ weaponStats: { ...weapon, secondaryDamage: { roll: { diceCount: 1, dieSize: 6, modifier: 0 }, type: 'fire' as const } } })}>
+                    + Add additional damage
                   </button>
                 )}
               </div>
