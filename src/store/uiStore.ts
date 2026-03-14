@@ -13,6 +13,7 @@ export type AppView =
   | 'sheet'         // active character sheet
   | 'builder'       // character creation / level up
   | 'database'      // browse/edit game content
+  | 'auth'          // sign in / sign up
   | 'settings';
 
 interface UIStore {

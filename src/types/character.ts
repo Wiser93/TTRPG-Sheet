@@ -171,6 +171,8 @@ export interface CharacterMeta {
   name: string;
   player?: string;
   campaign?: string;
+  /** Supabase campaign UUID this character belongs to */
+  campaignId?: string;
   /** URL or base64 */
   portrait?: string;
   /** ISO 8601 */

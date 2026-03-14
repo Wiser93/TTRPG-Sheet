@@ -1,91 +1,176 @@
 /**
- * sync/supabase.ts
+ * sync/supabase.ts — Character sync with Supabase
  *
- * Stub for future Supabase sync integration.
- *
- * The strategy:
- *  1. All local writes set isDirty=true and update the local timestamp.
- *  2. On demand (or on reconnect), push dirty records up.
- *  3. Pull remote changes for characters the user owns (by remoteId).
- *  4. Conflict resolution: last-write-wins on updatedAt (can be upgraded later).
- *
- * To activate, install @supabase/supabase-js, create a project, and set the
- * two environment variables below in your .env file:
- *
- *   VITE_SUPABASE_URL=https://xxxx.supabase.co
- *   VITE_SUPABASE_ANON_KEY=your-anon-key
- *
- * The expected Supabase table schemas mirror the local Dexie types exactly —
- * this makes upserts trivial. Enable Row Level Security with a policy that
- * binds each row to auth.uid() == owner_id.
+ * Strategy: local-first.
+ *   - Dexie (IndexedDB) is the source of truth.
+ *   - On push: send all characters with isDirty=true to Supabase.
+ *   - On pull: fetch all characters for the current user.
+ *   - Conflict resolution: last-write-wins on updated_at.
  */
 
-// ── Placeholder types (replace with real Supabase client once installed) ──
+import { supabase } from '@/lib/supabase';
+import { db } from '@/db/schema';
+import type { Character } from '@/types/character';
+import type { DBCharacter } from '@/db/schema';
 
-interface SyncResult {
-  pushed: number;
-  pulled: number;
-  conflicts: number;
-  errors: string[];
+// ── Observable status ──────────────────────────────────────────
+
+export type SyncStatus = 'idle' | 'syncing' | 'error' | 'offline';
+
+export interface SyncResult {
+  pushed: number; pulled: number; conflicts: number; errors: string[];
 }
 
-type SyncStatus = 'idle' | 'syncing' | 'error' | 'offline';
+let _status: SyncStatus = 'idle';
+let _lastError: string | null = null;
+const _listeners = new Set<() => void>();
 
-let syncStatus: SyncStatus = 'idle';
-
-// ── Auth stub ──────────────────────────────────────────────────────────────
-
-export async function signIn(_email: string, _password: string): Promise<void> {
-  throw new Error('Supabase not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+function setStatus(s: SyncStatus, err?: string) {
+  _status = s; _lastError = err ?? null;
+  _listeners.forEach(fn => fn());
+}
+export const getSyncStatus  = () => _status;
+export const getLastError   = () => _lastError;
+export function onSyncStatusChange(fn: () => void) {
+  _listeners.add(fn); return () => _listeners.delete(fn);
 }
 
-export async function signOut(): Promise<void> {
-  throw new Error('Supabase not configured.');
-}
-
-export function getCurrentUser(): null {
-  return null;
-}
-
-// ── Sync ───────────────────────────────────────────────────────────────────
-
-export async function syncAll(): Promise<SyncResult> {
-  console.warn('[Sync] Supabase sync not yet configured.');
-  return { pushed: 0, pulled: 0, conflicts: 0, errors: ['Supabase not configured'] };
-}
+// ── Push ──────────────────────────────────────────────────────
 
 export async function pushDirtyCharacters(): Promise<number> {
-  console.warn('[Sync] Supabase sync not yet configured.');
-  return 0;
+  if (!supabase) return 0;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return 0;
+
+  const dirty = await db.characters
+    .filter(c => !!(c as { meta: { isDirty?: boolean } }).meta.isDirty && !c.deletedAt)
+    .toArray();
+  if (!dirty.length) return 0;
+
+  setStatus('syncing');
+  const rows = dirty.map(c => ({
+    id:          c.id,
+    user_id:     user.id,
+    campaign_id: (c as unknown as { meta: { campaignId?: string } }).meta.campaignId ?? null,
+    data:        c as unknown,
+    updated_at:  (c as unknown as { meta: { updatedAt: string } }).meta.updatedAt,
+  }));
+
+  const { error } = await supabase.from('characters').upsert(rows, { onConflict: 'id' });
+  if (error) { setStatus('error', error.message); return 0; }
+
+  await Promise.all(dirty.map(c =>
+    db.characters.update(c.id, { 'meta.isDirty': false } as Partial<DBCharacter>)
+  ));
+  setStatus('idle');
+  return dirty.length;
 }
 
-export async function pullCharacter(_remoteId: string): Promise<void> {
-  throw new Error('Supabase not configured.');
+// ── Pull ──────────────────────────────────────────────────────
+
+export async function pullMyCharacters(): Promise<number> {
+  if (!supabase) return 0;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return 0;
+
+  setStatus('syncing');
+  const { data, error } = await supabase
+    .from('characters').select('*').eq('user_id', user.id);
+  if (error) { setStatus('error', error.message); return 0; }
+  if (!data?.length) { setStatus('idle'); return 0; }
+
+  let pulled = 0;
+  for (const row of data) {
+    const remote = row.data as DBCharacter;
+    const local  = await db.characters.get(row.id);
+    const remoteTs = new Date(row.updated_at).getTime();
+    const localTs  = local
+      ? new Date((local as unknown as { meta: { updatedAt: string } }).meta.updatedAt).getTime()
+      : 0;
+    if (!local || remoteTs > localTs) {
+      await db.characters.put({ ...remote, 'meta.isDirty': false } as DBCharacter);
+      pulled++;
+    }
+  }
+  setStatus('idle');
+  return pulled;
 }
 
-export function getSyncStatus(): SyncStatus {
-  return syncStatus;
+/** Pull all characters in a campaign — for DM view (read-only, not stored locally). */
+export async function pullCampaignCharacters(
+  campaignId: string
+): Promise<(Character & { id: string })[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from('characters').select('id, data, updated_at')
+    .eq('campaign_id', campaignId);
+  if (error || !data) return [];
+  return data.map(row => ({ ...(row.data as Character), id: row.id }));
 }
 
-/**
- * When you're ready to implement sync, replace this file with something like:
- *
- * import { createClient } from '@supabase/supabase-js';
- * import { db } from '@/db/schema';
- *
- * const supabase = createClient(
- *   import.meta.env.VITE_SUPABASE_URL,
- *   import.meta.env.VITE_SUPABASE_ANON_KEY
- * );
- *
- * export async function pushDirtyCharacters() {
- *   const dirty = await db.characters.filter(c => !!c.isDirty && !c.deletedAt).toArray();
- *   const { error } = await supabase.from('characters').upsert(
- *     dirty.map(c => ({ ...c, owner_id: supabase.auth.user()?.id }))
- *   );
- *   if (!error) {
- *     await Promise.all(dirty.map(c => db.characters.update(c.id, { isDirty: false })));
- *   }
- *   return dirty.length;
- * }
- */
+// ── Full sync ─────────────────────────────────────────────────
+
+export async function syncAll(): Promise<SyncResult> {
+  const result: SyncResult = { pushed: 0, pulled: 0, conflicts: 0, errors: [] };
+  if (!supabase) { result.errors.push('Supabase not configured'); return result; }
+  try {
+    result.pushed = await pushDirtyCharacters();
+    result.pulled = await pullMyCharacters();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    result.errors.push(msg);
+    setStatus('error', msg);
+  }
+  return result;
+}
+
+// ── Campaign management ────────────────────────────────────────
+
+export async function createCampaign(name: string): Promise<{ id: string; join_code: string } | null> {
+  if (!supabase) return null;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data, error } = await supabase
+    .from('campaigns').insert({ name, dm_user_id: user.id })
+    .select('id, join_code').single();
+  if (error || !data) { console.error(error); return null; }
+  return data;
+}
+
+export async function joinCampaign(
+  joinCode: string, characterId: string
+): Promise<{ name: string } | null> {
+  if (!supabase) return null;
+  const { data: campaign, error } = await supabase
+    .from('campaigns').select('id, name')
+    .eq('join_code', joinCode.toUpperCase().trim()).single();
+  if (error || !campaign) return null;
+  await db.characters.update(characterId, {
+    'meta.campaignId': campaign.id,
+    'meta.isDirty':    true,
+    'meta.updatedAt':  new Date().toISOString(),
+  } as Partial<DBCharacter>);
+  await pushDirtyCharacters();
+  return { name: campaign.name };
+}
+
+export async function leaveCampaign(characterId: string): Promise<void> {
+  await db.characters.update(characterId, {
+    'meta.campaignId': undefined,
+    'meta.isDirty':    true,
+    'meta.updatedAt':  new Date().toISOString(),
+  } as Partial<DBCharacter>);
+  await pushDirtyCharacters();
+}
+
+export async function getMyCampaigns(): Promise<
+  { id: string; name: string; join_code: string; dm_user_id: string }[]
+> {
+  if (!supabase) return [];
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data, error } = await supabase
+    .from('campaigns').select('id, name, join_code, dm_user_id')
+    .eq('dm_user_id', user.id);
+  return (error || !data) ? [] : data;
+}
