@@ -120,19 +120,30 @@ export function OverviewTab({ character, derived }: Props) {
 
   function confirmShortRest() {
     const totalHeal = diceRolls.reduce((s, r) => s + r.value, 0);
+    const spentHitDice = diceRolls.length > 0;
     shortRest(totalHeal, diceToSpend);
     setShortRestOpen(false);
     const triggered = derived.allFeatures.filter(f => {
+      const r = f.resetOn;
+      if (r === 'short_rest' || r === 'rest') return true;
+      if ((r === 'short_rest_hit_die' || r === 'rest_hit_die') && spentHitDice) return true;
+      // Legacy free-text fallback
       const t = (f.trigger ?? '').toLowerCase();
-      return t.includes('short rest') || t === 'short_rest';
+      if (!r && (t.includes('short rest'))) return true;
+      return false;
     });
     if (triggered.length > 0) setRestReminder({ type: 'short', features: triggered });
   }
 
   function handleLongRest() {
     const triggered = derived.allFeatures.filter(f => {
+      const r = f.resetOn;
+      if (r === 'long_rest' || r === 'short_rest' || r === 'rest' || r === 'dawn') return true;
+      if (r === 'short_rest_hit_die' || r === 'rest_hit_die') return true;
+      // Legacy free-text fallback
       const t = (f.trigger ?? '').toLowerCase();
-      return t.includes('long rest') || t === 'long_rest' || t.includes('rest');
+      if (!r && (t.includes('long rest') || t === 'long_rest' || t.includes('rest'))) return true;
+      return false;
     });
     const grantsInspiration = derived.allFeatures.some(f => f.grantHeroicInspiration === 'long_rest');
     longRest(grantsInspiration, derived.maxHP);

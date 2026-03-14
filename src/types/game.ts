@@ -151,6 +151,23 @@ export interface PathTier {
 /** How the feature is used in combat — drives the Combat tab grouping */
 export type ActionType = 'action' | 'bonus_action' | 'reaction' | 'passive';
 
+/**
+ * Structured rest-reset trigger for mechanical behaviour.
+ * - long_rest           : resets on long rest only
+ * - short_rest          : resets on short rest (and also long rest)
+ * - rest                : resets on either rest (alias for short_rest)
+ * - dawn                : resets at dawn
+ * - short_rest_hit_die  : short rest only when hit dice are spent; also on long rest
+ * - rest_hit_die        : either rest; short rest requires hit dice to be spent
+ */
+export type RestResetTrigger =
+  | 'long_rest'
+  | 'short_rest'
+  | 'rest'
+  | 'dawn'
+  | 'short_rest_hit_die'
+  | 'rest_hit_die';
+
 export interface Feature {
   id: string;
   name: string;
@@ -163,8 +180,13 @@ export interface Feature {
   actionType?: ActionType;
   /** Free-text cost shown in Combat tab (e.g. "1 EC", "1 use", "free") */
   cost?: string;
-  /** What triggers this feature (e.g. "Long Rest", "When hit", "Reaction") */
+  /** Optional display label shown in the UI (e.g. "Long Rest", "When hit") */
   trigger?: string;
+  /**
+   * Structured reset trigger — drives reminder display and recharge logic.
+   * Replaces freehand trigger text for rest-based resets.
+   */
+  resetOn?: RestResetTrigger;
   /** What the feature does in plain language (e.g. "Gain Heroic Inspiration") */
   effect?: string;
   /**

@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useUIStore } from '@/store/uiStore';
 import { useItems, useSpells, useClasses, useSubclasses, useFeats, useAllSpecies, useBackgrounds, useFeatures, useItemProperties, useConditions } from '@/hooks/useGameDatabase';
 import { upsertItem, deleteItem, upsertSpell, deleteSpell, upsertClass, deleteClass, upsertFeat, deleteFeat, upsertSpecies, deleteSpecies, upsertBackground, deleteBackground, upsertFeature, deleteFeature, upsertSubclass, deleteSubclass, upsertItemProperty, deleteItemProperty, upsertCondition, deleteCondition, clearAllGameContent } from '@/db/gameDatabase';
+import { exportClassBundle, exportAll, exportSelection, importBundle, downloadBundle, parseBundle } from '@/db/bundleIO';
+import type { ImportResult } from '@/db/bundleIO';
 import { elementalShaperClass, elementalShaperFeatures } from '@/data/elementalShaper';
 import { theHarmonist, theHarmonistFeatures } from '@/data/theHarmonist';
 import { seedSrdProperties } from '@/data/srdProperties';
@@ -70,6 +72,7 @@ export function DatabaseView() {
   const [deleteModal, setDeleteModal] = useState<DeleteModal | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
+  const [showExportImport, setShowExportImport] = useState(false);
 
   // ── Nav sections (excludes 'library' — handled separately) ──
   const DATA_SECTIONS = [
@@ -302,18 +305,31 @@ export function DatabaseView() {
         ))}
         {/* Library tab — always at the end */}
         <button
-          onClick={() => { setDatabaseSection('library'); setSearch(''); }}
+          onClick={() => { setDatabaseSection('library'); setSearch(''); setShowExportImport(false); }}
           style={{
             padding: '10px 12px', fontSize: 12, whiteSpace: 'nowrap', marginLeft: 'auto',
-            color: isLibrary ? 'var(--accent-4)' : 'var(--text-2)',
-            borderBottom: isLibrary ? '2px solid var(--accent-4)' : '2px solid transparent',
+            color: (isLibrary && !showExportImport) ? 'var(--accent-4)' : 'var(--text-2)',
+            borderBottom: (isLibrary && !showExportImport) ? '2px solid var(--accent-4)' : '2px solid transparent',
           }}>
           📦 Library
         </button>
+        <button
+          onClick={() => { setShowExportImport(true); setDatabaseSection('library'); setSearch(''); }}
+          style={{
+            padding: '10px 12px', fontSize: 12, whiteSpace: 'nowrap',
+            color: showExportImport ? 'var(--accent-4)' : 'var(--text-2)',
+            borderBottom: showExportImport ? '2px solid var(--accent-4)' : '2px solid transparent',
+          }}>
+          📤 Export / Import
+        </button>
       </nav>
 
-      {/* Library view */}
-      {isLibrary ? (
+      {/* Export / Import panel */}
+      {showExportImport ? (
+        <ExportImportPanel
+          classes={classes ?? []}
+        />
+      ) : isLibrary ? (
         <LibraryPanel
           installedClassIds={(classes ?? []).map(c => c.id)}
           installedSubclassIds={(subclasses ?? []).map(s => s.id)}
@@ -875,4 +891,280 @@ function entrySubtitle(entry: Record<string, unknown>, section: Exclude<SectionK
     return effects?.length ? `${effects.length} effect${effects.length !== 1 ? 's' : ''}` : (entry.description as string ?? '').slice(0, 60);
   }
   return '';
+}
+
+// ── Export / Import panel ─────────────────────────────────────
+
+function ExportImportPanel({
+  classes,
+}: {
+  classes: import('@/types/game').GameClass[];
+}) {
+  const [tab, setTab] = useState<'export' | 'import'>('export');
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+
+  // ── Export helpers ────────────────────────────────────────
+
+  async function handleExportClass(classId: string) {
+    setBusy(true); setResult(null);
+    try {
+      const bundle = await exportClassBundle(classId);
+      downloadBundle(bundle);
+      setResult(`✓ Exported "${bundle.name}" (${Object.values(bundle.tables).flat().length} records)`);
+    } catch (e) {
+      setResult(`✗ ${e}`);
+    } finally { setBusy(false); }
+  }
+
+  async function handleExportAll() {
+    setBusy(true); setResult(null);
+    try {
+      const bundle = await exportAll();
+      const total = Object.values(bundle.tables).reduce((n, t) => n + (t?.length ?? 0), 0);
+      downloadBundle(bundle);
+      setResult(`✓ Exported full database (${total} records)`);
+    } catch (e) {
+      setResult(`✗ ${e}`);
+    } finally { setBusy(false); }
+  }
+
+  async function handleExportTable(table: keyof import('@/db/bundleIO').ExportBundle['tables']) {
+    setBusy(true); setResult(null);
+    try {
+      const bundle = await exportSelection({ [table]: 'all' });
+      downloadBundle(bundle, table);
+      const count = (bundle.tables[table] as unknown[])?.length ?? 0;
+      setResult(`✓ Exported ${count} ${table}`);
+    } catch (e) {
+      setResult(`✗ ${e}`);
+    } finally { setBusy(false); }
+  }
+
+  // ── Import helpers ────────────────────────────────────────
+
+  async function processFile(file: File) {
+    if (!file.name.endsWith('.json') && !file.name.endsWith('.ttrpg.json')) {
+      setResult('✗ File must be a .ttrpg.json file');
+      return;
+    }
+    setBusy(true); setResult(null); setImportResult(null);
+    try {
+      const bundle = await parseBundle(file);
+      const res = await importBundle(bundle);
+      setImportResult(res);
+    } catch (e) {
+      setResult(`✗ ${e}`);
+    } finally { setBusy(false); }
+  }
+
+  function handleFileInput(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) processFile(file);
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) processFile(file);
+  }
+
+  const TABLE_EXPORTS: { key: keyof import('@/db/bundleIO').ExportBundle['tables']; label: string; icon: string }[] = [
+    { key: 'items',          label: 'Items',       icon: '⚔️'  },
+    { key: 'spells',         label: 'Spells',      icon: '✨'  },
+    { key: 'classes',        label: 'Classes',     icon: '📜'  },
+    { key: 'subclasses',     label: 'Subclasses',  icon: '🌀'  },
+    { key: 'feats',          label: 'Feats',       icon: '⭐'  },
+    { key: 'species',        label: 'Species',     icon: '🧬'  },
+    { key: 'backgrounds',    label: 'Backgrounds', icon: '📖'  },
+    { key: 'features',       label: 'Features',    icon: '⚡'  },
+    { key: 'itemProperties', label: 'Properties',  icon: '🏷️' },
+    { key: 'conditions',     label: 'Conditions',  icon: '🩹'  },
+  ];
+
+  const tabBtn = (t: 'export' | 'import') => ({
+    padding: '9px 18px', fontSize: 13, fontWeight: tab === t ? 700 : 400,
+    color: tab === t ? 'var(--accent)' : 'var(--text-2)',
+    borderBottom: tab === t ? '2px solid var(--accent)' : '2px solid transparent',
+    cursor: 'pointer',
+  } as React.CSSProperties);
+
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {/* Tab bar */}
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+        <button style={tabBtn('export')} onClick={() => { setTab('export'); setResult(null); setImportResult(null); }}>
+          📤 Export
+        </button>
+        <button style={tabBtn('import')} onClick={() => { setTab('import'); setResult(null); setImportResult(null); }}>
+          📥 Import
+        </button>
+      </div>
+
+      <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
+
+        {tab === 'export' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 560 }}>
+
+            {/* Full DB export */}
+            <section>
+              <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-2)', marginBottom: 8 }}>
+                Full Database
+              </p>
+              <button
+                className="btn btn-primary"
+                style={{ fontSize: 13 }}
+                disabled={busy}
+                onClick={handleExportAll}
+              >
+                {busy ? 'Exporting…' : '⬇ Export Everything'}
+              </button>
+              <p style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 6 }}>
+                Exports all tables into a single .ttrpg.json file. Useful for backups or migrating to a new device.
+              </p>
+            </section>
+
+            {/* Class bundles */}
+            {classes.length > 0 && (
+              <section>
+                <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-2)', marginBottom: 8 }}>
+                  Class Bundles
+                </p>
+                <p style={{ fontSize: 11, color: 'var(--text-2)', marginBottom: 10 }}>
+                  Exports a class with all its subclasses and features — ideal for sharing homebrew classes.
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {classes.map(cls => (
+                    <button
+                      key={cls.id}
+                      className="btn btn-ghost"
+                      style={{ justifyContent: 'flex-start', fontSize: 13 }}
+                      disabled={busy}
+                      onClick={() => handleExportClass(cls.id)}
+                    >
+                      📜 {cls.name}
+                      <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-2)' }}>Export bundle</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Per-table exports */}
+            <section>
+              <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-2)', marginBottom: 8 }}>
+                Individual Tables
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                {TABLE_EXPORTS.map(({ key, label, icon }) => (
+                  <button
+                    key={key}
+                    className="btn btn-ghost"
+                    style={{ fontSize: 12, justifyContent: 'flex-start', gap: 6 }}
+                    disabled={busy}
+                    onClick={() => handleExportTable(key)}
+                  >
+                    {icon} {label}
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            {result && (
+              <p style={{
+                fontSize: 12, padding: '8px 12px', borderRadius: 6,
+                background: result.startsWith('✓') ? 'color-mix(in srgb, var(--accent-4) 15%, var(--bg-2))' : 'color-mix(in srgb, var(--accent-2) 15%, var(--bg-2))',
+                color: result.startsWith('✓') ? 'var(--accent-4)' : 'var(--accent-2)',
+                fontWeight: 600,
+              }}>
+                {result}
+              </p>
+            )}
+          </div>
+        )}
+
+        {tab === 'import' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 560 }}>
+            <p style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.5 }}>
+              Import a <code style={{ fontSize: 12, background: 'var(--bg-3)', padding: '1px 5px', borderRadius: 3 }}>.ttrpg.json</code> bundle.
+              Records with matching IDs will be overwritten; new records are added.
+            </p>
+
+            {/* Drop zone */}
+            <div
+              onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={handleDrop}
+              style={{
+                border: `2px dashed ${dragOver ? 'var(--accent)' : 'var(--border)'}`,
+                borderRadius: 12,
+                padding: '32px 20px',
+                textAlign: 'center',
+                background: dragOver ? 'color-mix(in srgb, var(--accent) 8%, var(--bg-1))' : 'var(--bg-1)',
+                transition: 'all 150ms',
+                cursor: 'pointer',
+              }}
+              onClick={() => document.getElementById('bundle-file-input')?.click()}
+            >
+              <p style={{ fontSize: 28, marginBottom: 8 }}>📥</p>
+              <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>
+                {busy ? 'Importing…' : 'Drop a .ttrpg.json file here'}
+              </p>
+              <p style={{ fontSize: 12, color: 'var(--text-2)' }}>or click to browse</p>
+              <input
+                id="bundle-file-input"
+                type="file"
+                accept=".json,.ttrpg.json"
+                style={{ display: 'none' }}
+                onChange={handleFileInput}
+              />
+            </div>
+
+            {result && (
+              <p style={{
+                fontSize: 12, padding: '8px 12px', borderRadius: 6,
+                background: 'color-mix(in srgb, var(--accent-2) 15%, var(--bg-2))',
+                color: 'var(--accent-2)', fontWeight: 600,
+              }}>
+                {result}
+              </p>
+            )}
+
+            {importResult && (
+              <div style={{ background: 'var(--bg-2)', borderRadius: 8, padding: 14, border: '1px solid var(--border)' }}>
+                <p style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>
+                  ✓ Import complete
+                </p>
+                {Object.entries(importResult.counts).length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {Object.entries(importResult.counts).map(([table, count]) => (
+                      <div key={table} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                        <span style={{ color: 'var(--text-2)', textTransform: 'capitalize' }}>{table}</span>
+                        <span style={{ fontWeight: 600, color: 'var(--accent-4)' }}>{count} records</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p style={{ fontSize: 12, color: 'var(--text-2)' }}>No records imported.</p>
+                )}
+                {importResult.errors.length > 0 && (
+                  <div style={{ marginTop: 10, borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+                    <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent-2)', marginBottom: 6 }}>
+                      Errors ({importResult.errors.length})
+                    </p>
+                    {importResult.errors.map((e, i) => (
+                      <p key={i} style={{ fontSize: 11, color: 'var(--accent-2)', marginBottom: 2 }}>{e}</p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }

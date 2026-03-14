@@ -242,6 +242,10 @@ export async function deleteFeature(id: string): Promise<void> {
 
 // ── Item Property Definitions ──────────────────────────────────
 
+export async function getItemProperties(): Promise<(import('@/types/game').ItemProperty & { updatedAt?: string; deletedAt?: string })[]> {
+  return live(db.itemProperties).toArray();
+}
+
 export async function upsertItemProperty(prop: Omit<import('@/types/game').ItemProperty, 'id'> & { id?: string }): Promise<string> {
   const id = prop.id ?? crypto.randomUUID();
   const now = new Date().toISOString();

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { LabeledInput, LabeledSelect, LabeledTextarea } from '@/components/ui/FormField';
-import type { Feature, ActionType, StatKey, PathTier, Choice } from '@/types/game';
+import type { Feature, ActionType, StatKey, PathTier, Choice, RestResetTrigger } from '@/types/game';
 import { useClasses, useFeatures } from '@/hooks/useGameDatabase';
 import type { ResourceFormulaTerm } from '@/types/character';
 
@@ -17,6 +17,16 @@ const RECHARGE_OPTIONS = [
   { value: 'long_rest',  label: 'Long Rest' },
   { value: 'dawn',       label: 'Dawn' },
   { value: 'never',      label: 'Never (single use)' },
+];
+
+const RESET_ON_OPTIONS: { value: RestResetTrigger | ''; label: string; hint: string }[] = [
+  { value: '',                   label: '— None / custom —',              hint: 'No structured reset. Use the display label for free-text.' },
+  { value: 'long_rest',          label: 'Long Rest',                      hint: 'Resets on long rest only.' },
+  { value: 'short_rest',         label: 'Short Rest',                     hint: 'Resets on short or long rest.' },
+  { value: 'rest',               label: 'Rest (either)',                  hint: 'Resets on short or long rest (same as Short Rest for reminders).' },
+  { value: 'dawn',               label: 'Dawn',                           hint: 'Resets at dawn.' },
+  { value: 'short_rest_hit_die', label: 'Short Rest (Hit Die)',           hint: 'Short rest only when hit dice are spent; also resets on long rest.' },
+  { value: 'rest_hit_die',       label: 'Rest — either (Hit Die on short)', hint: 'Long rest resets unconditionally. Short rest only when hit dice are spent.' },
 ];
 
 const SOURCE_TYPE_OPTIONS = [
@@ -84,6 +94,7 @@ export function FeatureForm({ initial, onSave, isSaving }: Props) {
     cost:               initial?.cost               ?? '',
     tags:               initial?.tags               ?? [],
     trigger:            initial?.trigger,
+    resetOn:            initial?.resetOn,
     effect:             initial?.effect,
     grantHeroicInspiration: initial?.grantHeroicInspiration,
     sourceType:         initial?.sourceType,
@@ -165,14 +176,50 @@ export function FeatureForm({ initial, onSave, isSaving }: Props) {
           placeholder="e.g. 1 EC, 1 use, free" />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        <LabeledInput label="Trigger (optional)" value={f.trigger ?? ''}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => patch({ trigger: e.target.value || undefined })}
-          placeholder="e.g. Long Rest, When hit" />
-        <LabeledInput label="Effect (optional)" value={f.effect ?? ''}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => patch({ effect: e.target.value || undefined })}
-          placeholder="e.g. Gain Heroic Inspiration" />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {/* Reset trigger — structured picker */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>
+              Resets On
+            </label>
+            <select
+              value={f.resetOn ?? ''}
+              onChange={e => patch({ resetOn: (e.target.value || undefined) as RestResetTrigger | undefined })}
+              style={{ width: '100%', fontSize: 13 }}
+            >
+              {RESET_ON_OPTIONS.map(o => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+          <LabeledInput label="Display Label (optional)" value={f.trigger ?? ''}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => patch({ trigger: e.target.value || undefined })}
+            placeholder={
+              f.resetOn === 'long_rest'          ? 'Long Rest' :
+              f.resetOn === 'short_rest'         ? 'Short Rest' :
+              f.resetOn === 'rest'               ? 'Rest' :
+              f.resetOn === 'dawn'               ? 'Dawn' :
+              f.resetOn === 'short_rest_hit_die' ? 'Short Rest (Hit Die)' :
+              f.resetOn === 'rest_hit_die'       ? 'Rest (Hit Die)' :
+              'e.g. When hit, 1 minute'
+            }
+          />
+        </div>
+        {/* Hint text */}
+        {f.resetOn && (() => {
+          const opt = RESET_ON_OPTIONS.find(o => o.value === f.resetOn);
+          return opt ? (
+            <p style={{ fontSize: 11, color: 'var(--text-2)', paddingLeft: 2 }}>
+              {opt.hint}
+            </p>
+          ) : null;
+        })()}
       </div>
+
+      <LabeledInput label="Effect (optional)" value={f.effect ?? ''}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => patch({ effect: e.target.value || undefined })}
+        placeholder="e.g. Gain Heroic Inspiration" />
 
       {/* Grant Heroic Inspiration automation */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: 'var(--bg-2)', borderRadius: 6 }}>
