@@ -127,13 +127,16 @@ export async function syncAll(): Promise<SyncResult> {
 // ── Campaign management ────────────────────────────────────────
 
 export async function createCampaign(name: string): Promise<{ id: string; join_code: string } | null> {
-  if (!supabase) return null;
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
+  if (!supabase) { console.error('[createCampaign] Supabase not configured'); return null; }
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError) { console.error('[createCampaign] getUser error:', userError); return null; }
+  if (!user) { console.error('[createCampaign] No authenticated user'); return null; }
+  console.log('[createCampaign] user.id:', user.id, 'name:', name);
   const { data, error } = await supabase
     .from('campaigns').insert({ name, dm_user_id: user.id })
     .select('id, join_code').single();
-  if (error || !data) { console.error(error); return null; }
+  console.log('[createCampaign] data:', data, 'error:', error);
+  if (error || !data) { return null; }
   return data;
 }
 
